@@ -1,7 +1,7 @@
 
 vector<int> primes(int limit)
 {
-	vector<int> primes = { 1, 2 };
+	vector<int> primes = { 2 };
 	for (int number = 3; number <= limit; number += 2)
 	{
 		int maxDiv = integerSqrt(number) + 1;
