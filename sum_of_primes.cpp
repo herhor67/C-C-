@@ -61,7 +61,7 @@ int get_integer(int minVal = INT_MIN, int maxVal = INT_MAX)
 
 vector<int> primes(int limit)
 {
-	vector<int> primes = { 1, 2 };
+	vector<int> primes = { 2 };
 	for (int number = 3; number <= limit; number += 2)
 	{
 		int maxDiv = integerSqrt(number) + 1;
@@ -70,7 +70,7 @@ vector<int> primes(int limit)
 		{
 			if (prime > maxDiv)
 				break;
-			if (prime != 1 && number % prime == 0)
+			if (number % prime == 0)
 			{
 				isPrime = false;
 				break;
@@ -81,7 +81,6 @@ vector<int> primes(int limit)
 	}
 	return primes;
 }
-
 
 int main()
 {
@@ -106,7 +105,7 @@ int main()
 		vector<int> solution;
 		int remainder = limit;
 		int level = 0;
-		while (remainder != 0)
+		while (remainder > 1)
 		{
 			if (level >= maxposes.size())
 				maxposes.push_back(maxposes[level - 1]);
@@ -121,20 +120,22 @@ int main()
 				}
 			++level;
 		}
-/*		cout << "Solution: " << limit << "=";
-		int s = 0;
-		while (s+2 <= solution.size())
-			cout << solution[s++] << "+";
-		cout << solution[s] << endl;*/
+
+		if (remainder == 0)
+		{
+			++count;
+			cout << "Solution: " << limit << "=";
+			int s = 0;
+			while (s + 2 <= solution.size())
+				cout << solution[s++] << "+";
+			cout << solution[s] << endl;
+		}
 
 		int i = maxposes.size() - 1;
 		while (i > 0 && maxposes[i] == prmlen)
 			maxposes.erase(maxposes.begin() + i--);
 		++maxposes[i];
 
-		++count;
 	}
 	cout << endl << "Total solutions: " << count << endl;
 }
-
-
