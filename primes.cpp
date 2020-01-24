@@ -1,5 +1,4 @@
 
-
 vector<int> primes(int limit)
 {
 	vector<int> primes = { 1, 2 };
