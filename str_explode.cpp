@@ -2,7 +2,7 @@
 vector<string> explode(const string&, char);
 
 
-vector<string> explode(string const& s, char delim)
+vector<string> explode(const string& s, char delim)
 {
 	vector<string> result;
 	istringstream iss(s);
