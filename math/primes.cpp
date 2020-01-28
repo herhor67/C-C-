@@ -1,7 +1,10 @@
 
 vector<int> primes(int limit)
 {
-	vector<int> primes = { 2 };
+	vector<int> primes;
+	if (limit < 2)
+		return primes;
+	primes.push_back(2);
 	for (int number = 3; number <= limit; number += 2)
 	{
 		int maxDiv = integerSqrt(number) + 1;
@@ -10,7 +13,7 @@ vector<int> primes(int limit)
 		{
 			if (prime > maxDiv)
 				break;
-			if (prime != 1 && number % prime == 0)
+			if (number % prime == 0)
 			{
 				isPrime = false;
 				break;
