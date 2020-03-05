@@ -135,10 +135,12 @@ class varint
   public:
 	bool pstv = 1;
 	vector<unit> value;
+	varint() {}
 	varint(unit num, bool noneg = 1)
 	{
 		pstv = noneg;
 		value.push_back(num);
+		reduce();
 	}
 	varint(string num, size_t base = 16, bool noneg = 1)
 	{
@@ -181,11 +183,15 @@ class varint
 		do
 		{
 //			cout << "(" << pos << ") " << incr << endl;
-			value.resize(pos+1);
-			for (size_t i = value.size(); i <= pos; ++i)
-				value.at(i-1) = 0;
+			if (pos >= value.size())
+			{
+				size_t i = value.size();
+				value.resize(pos + 1);
+				for (; i <= pos; ++i)
+					value.at(i) = 0;
+			}
 			bool a = value.at(pos) >> (unitbyte * 8 - 1);
-			bool b = incr >> (unitbyte * 8 - 1);
+			bool b = incr          >> (unitbyte * 8 - 1);
 			value.at(pos) += incr;
 			bool s = value.at(pos) >> (unitbyte * 8 - 1);
 			incr = (!s && (a || b) || a && b);
@@ -195,7 +201,28 @@ class varint
 		return *this;
 	}
 
-	bool operator> (const varint &rhs) const
+	varint abs()  const
+	{
+		varint temp(*this);
+		temp.pstv = 1;
+		return temp;
+	}
+	int    sign() const
+	{
+		if (value.size() == 0)
+			return 0;
+		return pstv * 2 - 1;
+	}
+	varint cmpl(size_t pad = 0) const
+	{
+		varint temp(~*this);
+		temp.increment(1, 0);
+		for (size_t i = temp.value.size(); i < pad; ++i)
+			temp.value.push_back(~0);
+		return temp;
+	}
+
+	bool operator> (const varint& rhs) const
 	{
 		if (pstv > rhs.pstv)
 			return true;
@@ -211,7 +238,7 @@ class varint
 		}
 		return false;
 	}
-	bool operator>=(const varint &rhs) const
+	bool operator>=(const varint& rhs) const
 	{
 		if (pstv > rhs.pstv)
 			return true;
@@ -227,7 +254,7 @@ class varint
 		}
 		return true;
 	}
-	bool operator< (const varint &rhs) const
+	bool operator< (const varint& rhs) const
 	{
 		if (pstv < rhs.pstv)
 			return true;
@@ -243,38 +270,42 @@ class varint
 		}
 		return false;
 	}
-	bool operator<=(const varint &rhs) const
+	bool operator<=(const varint& rhs) const
 	{
 		if (pstv < rhs.pstv)
 			return true;
 		if (pstv > rhs.pstv)
 			return false;
 		size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
-		for (int i = maxize - 1; i >= 0; --i)
+		for (size_t i = maxize; i > 0; --i)
 		{
-			if (gvoe(value, i) < gvoe(rhs.value, i))
-				return true;
-			if (gvoe(value, i) > gvoe(rhs.value, i))
+			if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+				return pstv;
+			if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+				return !pstv;
+		}
+		return true;
+	}
+	bool operator==(const varint& rhs) const
+	{
+		if (pstv != rhs.pstv)
+			return false;
+		size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
+		for (size_t i = maxize; i > 0; --i)
+		{
+			if (gvoe(value, i - 1) != gvoe(rhs.value, i - 1))
 				return false;
 		}
 		return true;
 	}
-	bool operator==(const varint &rhs) const
+	bool operator!=(const varint& rhs) const
 	{
+		if (pstv != rhs.pstv)
+			return true;
 		size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
-		for (int i = maxize - 1; i >= 0; --i)
+		for (size_t i = maxize; i > 0; --i)
 		{
-			if (gvoe(value, i) != gvoe(rhs.value, i))
-				return false;
-		}
-		return true;
-	}
-	bool operator!=(const varint &rhs) const
-	{
-		size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
-		for (int i = maxize - 1; i >= 0; --i)
-		{
-			if (gvoe(value, i) != gvoe(rhs.value, i))
+			if (gvoe(value, i - 1) != gvoe(rhs.value, i - 1))
 				return true;
 		}
 		return false;
@@ -305,16 +336,74 @@ class varint
 		return *this != varint(rhs);
 	}
 
-	varint operator-() const
+	varint  operator- () const
 	{
 		varint temp(*this);
 		temp.pstv = !pstv;
 		return temp;
 	}
-	varint abs() const
+	varint  operator~ () const
+	{
+		varint temp;
+		temp.value.resize(value.size());
+		temp.pstv = !pstv;
+		for (size_t i = temp.value.size(); i > 0; --i)
+			temp.value.at(i - 1) = ~value.at(i - 1);
+		return temp;
+	}
+
+	varint& operator+=(const varint& rhs)
+	{
+		if (sign() == 0)
+		{
+			value = rhs.value;
+			pstv  = rhs.pstv;
+		}
+		else if (rhs.sign() == 0) {}
+		else if (sign() == rhs.sign())
+		{
+			for (size_t i = 0; i < rhs.value.size(); ++i)
+				increment(gvoe(rhs.value, i), i);
+		}
+		else if (abs() == rhs.abs())
+		{
+			value.clear();
+		}
+		else if (abs() > rhs.abs())
+		{
+			cout << "doom cont 1" << endl;
+			varint cpl = rhs.cmpl(value.size());
+			for (size_t i = 0; i < cpl.value.size(); ++i)
+				increment(gvoe(cpl.value, i), i);
+			value.pop_back();
+		}
+		else if (abs() < rhs.abs())
+		{
+			cout << "doom cont 2" << endl;
+			*this = cmpl(rhs.value.size());
+			pstv = rhs.pstv;
+			for (size_t i = 0; i < rhs.value.size(); ++i)
+				increment(gvoe(rhs.value, i), i);
+			value.pop_back();
+		}
+		reduce();
+		return *this;
+	}
+	varint& operator-=(const varint& rhs)
+	{
+		return operator+=(-rhs);
+	}
+
+	varint  operator+(const varint &rhs) const
 	{
 		varint temp(*this);
-		temp.pstv = 1;
+		temp.operator+=(rhs);
+		return temp;
+	}
+	varint  operator-(const varint& rhs) const
+	{
+		varint temp(*this);
+		temp.operator+=(-rhs);
 		return temp;
 	}
 
@@ -322,48 +411,37 @@ class varint
 	{
 		return increment(rhs, 0);
 	}
-	varint& operator+=(const varint& rhs)
-	{
-		for (size_t i = 0; i < rhs.value.size(); ++i)
-			increment(gvoe(rhs.value, i), i);
-		return *this;
-	}
-
-	varint  operator+(const varint &rhs) const
-	{
-		varint temp(*this);
-		temp += rhs;
-		return temp;
-	}
 
 	void reduce()
 	{
-		for (size_t i = value.size() - 1; i != 0; --i)
-			if (value.at(i) == 0)
+		for (size_t i = value.size(); i > 0; --i)
+			if (value.at(i - 1) == 0)
 				value.pop_back();
 			else
 				break;
+		if (value.size() == 0)
+			pstv = 1;
 	}
 
 	string hex() const
 	{
-		string result = "0x\n";
-		for (unit piece : value)
-			result.append(num2hex(piece) + '\n');
+		string result = string(pstv ? "+" : "-") + "0x\n";
+		for (size_t i = value.size(); i > 0; --i)
+			result.append(num2hex(value.at(i - 1)) + '\n');
 		return result;
 	}
 	string dec() const
 	{
-		string result = "0d\n";
-		for (unit piece : value)
-			result.append(to_string(piece) + '\n');
+		string result = string(pstv ? "+" : "-") + "0d\n";
+		for (size_t i = value.size(); i > 0; --i)
+			result.append(to_string(value.at(i - 1)) + '\n');
 		return result;
 	}
 	string bin() const
 	{
-		string result = "0b\n";
-		for (unit piece : value)
-			result.append(num2bin(piece) + '\n');
+		string result = string(pstv ? "+" : "-") + "0b\n";
+		for (size_t i = value.size(); i > 0; --i)
+			result.append(num2bin(value.at(i - 1)) + '\n');
 		return result;
 	}
 };
@@ -384,15 +462,15 @@ int main()
 	string hex = "1234567890ABCDEFFEDCBA9876543210FFFFFFFFFFFFFFFF";
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0000000000000000000000000000000000000000000010010001101000101011001111000100110101011110011011110111111111110110111001011101010011000011101100101010000110010000100001111111111111111111111111111111111111111111111111111111111111111";
-	varint snd(hex, 16);
-	varint num(1);
-	cout << num.dec() << endl
-		 << num.hex() << endl
-		 << num.bin() << endl;
+	varint num(hex, 16, 0);
+	//varint num(12342344234234345345, 1);
+	varint snd(1, 0);
+	cout << "A:\n" << num.hex() << endl << endl;
+	cout << "B:\n" << snd.hex() << endl << endl;
 
-	num += snd;
+	varint sum1 = snd - num;
+	varint sum2 = num - snd;
 
-	cout << num.dec() << endl
-		 << num.hex() << endl
-		 << num.bin() << endl;
+	cout << "Sum:\n" << sum1.hex() << endl << endl;
+	cout << "Sum:\n" << sum2.hex() << endl << endl;
 }
