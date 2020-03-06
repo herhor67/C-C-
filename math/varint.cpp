@@ -6,7 +6,7 @@
 using namespace std;
 using ull = unsigned long long;
 
-using unit = unsigned long long;
+using unit = unsigned long long;//unsigned int;
 constexpr size_t unitbyte = sizeof(unit);
 
 template <typename T>
@@ -182,7 +182,6 @@ class varint
 	{
 		do
 		{
-//			cout << "(" << pos << ") " << incr << endl;
 			if (pos >= value.size())
 			{
 				size_t i = value.size();
@@ -196,8 +195,8 @@ class varint
 			bool s = value.at(pos) >> (unitbyte * 8 - 1);
 			incr = (!s && (a || b) || a && b);
 			++pos;
-		} while (incr != 0);
-		reduce();
+		}
+		while (incr != 0);
 		return *this;
 	}
 
@@ -352,7 +351,7 @@ class varint
 		return temp;
 	}
 
-	varint& operator+=(const varint& rhs)
+	varint& operator+=(const varint rhs)
 	{
 		if (sign() == 0)
 		{
@@ -371,15 +370,13 @@ class varint
 		}
 		else if (abs() > rhs.abs())
 		{
-			cout << "doom cont 1" << endl;
 			varint cpl = rhs.cmpl(value.size());
 			for (size_t i = 0; i < cpl.value.size(); ++i)
 				increment(gvoe(cpl.value, i), i);
 			value.pop_back();
 		}
-		else if (abs() < rhs.abs())
+		else// if (abs() < rhs.abs())
 		{
-			cout << "doom cont 2" << endl;
 			*this = cmpl(rhs.value.size());
 			pstv = rhs.pstv;
 			for (size_t i = 0; i < rhs.value.size(); ++i)
@@ -389,21 +386,46 @@ class varint
 		reduce();
 		return *this;
 	}
-	varint& operator-=(const varint& rhs)
+	varint& operator-=(const varint rhs)
 	{
 		return operator+=(-rhs);
 	}
+	varint& operator*=(const varint rhs)
+	{
+		varint temp = *this;
+		pstv = (pstv == rhs.pstv);
+		value.clear();
+		value.resize(temp.value.size() + rhs.value.size());
+		for (size_t u = 0; u < rhs.value.size(); ++u)
+			for (size_t b = 0; b < unitbyte * 8; ++b)
+				if (rhs.value.at(u) & (unit(1) << b))
+					for (size_t i = 0; i < temp.value.size(); ++i)
+					{
+						if (b < unitbyte * 8)
+							increment(temp.value.at(i) << b, u + i);
+						if (b > 0)
+							increment(temp.value.at(i) >> (unitbyte * 8 - b), u + i + 1);
+					}
+		reduce();
+		return *this;
+	}
 
-	varint  operator+(const varint &rhs) const
+	varint  operator+(const varint rhs) const
 	{
 		varint temp(*this);
 		temp.operator+=(rhs);
 		return temp;
 	}
-	varint  operator-(const varint& rhs) const
+	varint  operator-(const varint rhs) const
 	{
 		varint temp(*this);
 		temp.operator+=(-rhs);
+		return temp;
+	}
+	varint  operator*(const varint rhs) const
+	{
+		varint temp(*this);
+		temp.operator*=(rhs);
 		return temp;
 	}
 
@@ -459,18 +481,23 @@ public:
 
 int main()
 {
-	string hex = "1234567890ABCDEFFEDCBA9876543210FFFFFFFFFFFFFFFF";
+	string hex = "0123456789ABCDEFFEDCBA9876543210FFFFFFFFFFFFFFFF";
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0000000000000000000000000000000000000000000010010001101000101011001111000100110101011110011011110111111111110110111001011101010011000011101100101010000110010000100001111111111111111111111111111111111111111111111111111111111111111";
-	varint num(hex, 16, 0);
+
+	varint num(hex, 16, 1);
 	//varint num(12342344234234345345, 1);
-	varint snd(1, 0);
+	//varint snd(1232345678, 1);
+	varint snd(num);
 	cout << "A:\n" << num.hex() << endl << endl;
 	cout << "B:\n" << snd.hex() << endl << endl;
 
-	varint sum1 = snd - num;
-	varint sum2 = num - snd;
+	varint sum1 = num * num;
+//	varint sum1 = snd - num;
+//	varint sum2 = num - snd;
 
-	cout << "Sum:\n" << sum1.hex() << endl << endl;
-	cout << "Sum:\n" << sum2.hex() << endl << endl;
+	cout << "Pr:\n" << sum1.hex() << endl << endl;
+
+//	cout << "Sum:\n" << sum1.hex() << endl << endl;
+//	cout << "Sum:\n" << sum2.hex() << endl << endl;
 }
