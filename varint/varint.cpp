@@ -537,7 +537,7 @@ int main()
 	cout << "A:\n" << num.hex() << endl << endl;
 //	cout << "B:\n" << snd.hex() << endl << endl;
 
-	varint sum1 = num.pow(64);
+	varint sum1 = num.pow(12);
 //	varint sum1 = snd - num;
 //	varint sum2 = num - snd;
 
