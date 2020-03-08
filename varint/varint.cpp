@@ -356,17 +356,35 @@ namespace Meth
 
 		varint& operator<<=(const size_t shift)
 		{
-			size_t lshift = shift % (unitbyte * 8);
-			size_t append = (shift - lshift) / (unitbyte * 8);
-			unsigned r = 0;
-			unit temp = value.back();
-			while (temp >>= 1)
-				++r;
-			size_t old = value.size() - 1 + append;
-			value.resize(old + 1 + (lshift >= unitbyte * 8 - r));
-			for (size_t i = value.size() - 1; i + 1 > 0; --i)
-				value.at(i) = ((i <= old && i >= append) ? value.at(i - append) << lshift : 0) | ((i - 1 <= old && i - 1 >= append) ? value.at(i - 1 - append) >> (unitbyte * 8 - lshift) : 0);
-//				cout << (i) << " = " << ((i <= old && i >= append) ? gvoe(value, i - append) << lshift : 0) << " | " << ((i - 2 <= old && i - 1 >= append) ? gvoe(value, i - 1 - append) >> (unitbyte * 8 - lshift) : 0) << endl;
+			if (shift)
+			{
+				size_t lshift = shift % (unitbyte * 8);
+				size_t append = (shift - lshift) / (unitbyte * 8);
+				unsigned r = 0;
+				unit temp = value.back();
+				while (temp >>= 1)
+					++r;
+				size_t old = value.size() - 1 + append;
+				value.resize(old + 1 + (lshift >= unitbyte * 8 - r));
+				for (size_t i = value.size() - 1; i + 1 > 0; --i)
+					value.at(i) = ((i <= old && i >= append) ? value.at(i - append) << lshift : 0) | ((i - 1 <= old && i - 1 >= append) ? value.at(i - 1 - append) >> (unitbyte * 8 - lshift) : 0);
+			}
+			return *this;
+		}
+		varint& operator>>=(const size_t shift)
+		{
+			if (shift)
+			{
+				size_t rshift = shift % (unitbyte * 8);
+				size_t remove = (shift - rshift) / (unitbyte * 8);
+				unsigned r = 0;
+
+				//			size_t old = value.size() - 1 + append;
+				for (size_t i = 0; i < value.size(); ++i)
+					value.at(i) = (gvoe(value, i + remove) >> rshift) | (rshift ? (gvoe(value, i + 1 + remove) << (unitbyte * 8 - rshift)) : 0);
+				//			value.resize(old + 1 + (lshift >= unitbyte * 8 - r));
+				reduce();
+			}
 			return *this;
 		}
 
@@ -425,6 +443,24 @@ namespace Meth
 			reduce();
 			return *this;
 		}
+		varint& operator%=(const varint rhs)
+		{
+			bool sign = pstv;
+			*this = abs();
+			varint divisor = rhs.abs();
+			divisor <<= leftmostone() - divisor.leftmostone();
+
+			while (*this >= rhs.abs())
+			{
+				cout << "this > div" << endl;
+				cout << bin() << divisor.bin() << endl;
+				if (*this >= divisor)
+					*this -= divisor;
+				divisor >>= 1;
+				system("pause");
+			}
+			return *this;
+		}
 
 		varint  operator<<(const size_t rhs) const
 		{
@@ -452,12 +488,24 @@ namespace Meth
 			return temp;
 		}
 
+		varint operator/ (const varint rhs) const
+		{
+			varint remainder = abs();
+			varint divisor = rhs.abs();
+
+			while (remainder > divisor)
+			{
+				varint tempdivisor = divisor << (remainder.leftmostone() - divisor.leftmostone());
+			}
+			return remainder;
+		}
+
 		varint& operator+=(const unit & rhs)
 		{
 			return increment(rhs, 0);
 		}
 
-		varint pow(ull n)
+		varint pow(ull n) const
 		{
 			varint x(*this);
 			varint y(1);
@@ -473,6 +521,16 @@ namespace Meth
 			return y;
 		}
 
+
+		size_t leftmostone() const
+		{
+			size_t r = 0;
+			unit temp = value.back();
+			while (temp >>= 1)
+				++r;
+			return unitbyte * 8 * (value.size() - 1) + r;
+			return 0;
+		}
 
 		void reduce()
 		{
@@ -529,20 +587,13 @@ int main()
 	string bin = "0111010101011101010";
 
 	varint num(hex, 16, 1);
-//	varint num(12342344234234345345, 1);
 
-//	varint snd(1232345678, 1);
-//	varint snd(num);
+	varint snd(1234);
 
-	cout << "A:\n" << num.hex() << endl << endl;
+	cout << "A:\n" << num.bin() << endl << endl;
 //	cout << "B:\n" << snd.hex() << endl << endl;
 
-	varint sum1 = num.pow(12);
-//	varint sum1 = snd - num;
-//	varint sum2 = num - snd;
+	num %= snd;
 
-	cout << "Pr:\n" << sum1.hex() << endl << endl;
-
-//	cout << "Sum:\n" << sum1.hex() << endl << endl;
-//	cout << "Sum:\n" << sum2.hex() << endl << endl;
+	cout << "Sum:\n" << num.hex() << num.bin() << endl << endl;
 }
