@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <stdexcept>
 
 using namespace std;
 
@@ -18,7 +19,7 @@ T gvoe(const vector<T>& vec, size_t pos)
 	return vec[pos];
 }
 
-vector<string> str_split_backward(const string & str, size_t split)
+vector<string> str_split_backward(const string& str, size_t split)
 {
 	vector<string> out;
 	out.reserve(str.length() / split + (str.length() % split) ? 1 : 0);
@@ -30,7 +31,7 @@ vector<string> str_split_backward(const string & str, size_t split)
 		out.push_back(str.substr(i, split));
 	return out;
 }
-vector<string> str_split(const string & str, size_t split)
+vector<string> str_split(const string& str, size_t split)
 {
 	vector<string> out;
 	out.reserve(str.length() / split + (str.length() % split) ? 1 : 0);
@@ -38,7 +39,7 @@ vector<string> str_split(const string & str, size_t split)
 		out.push_back(str.substr(i, split));
 	return out;
 }
-vector<char> str_explode(const string & str)
+vector<char> str_explode(const string& str)
 {
 	vector<char> out;
 	out.reserve(str.length());
@@ -133,7 +134,6 @@ vector<ull> primes(ull limit)
 
 namespace Meth
 {
-
 	class varint
 	{
 	public:
@@ -199,7 +199,8 @@ namespace Meth
 				bool s = value.at(pos) >> (unitbyte * 8 - 1);
 				incr = (!s && (a || b) || a && b);
 				++pos;
-			} while (incr != 0);
+			}
+			while (incr != 0);
 			return *this;
 		}
 
@@ -224,7 +225,7 @@ namespace Meth
 			return temp;
 		}
 
-		bool operator> (const varint & rhs) const
+		bool operator> (const varint& rhs) const
 		{
 			if (pstv > rhs.pstv)
 				return true;
@@ -240,7 +241,7 @@ namespace Meth
 			}
 			return false;
 		}
-		bool operator>=(const varint & rhs) const
+		bool operator>=(const varint& rhs) const
 		{
 			if (pstv > rhs.pstv)
 				return true;
@@ -256,7 +257,7 @@ namespace Meth
 			}
 			return true;
 		}
-		bool operator< (const varint & rhs) const
+		bool operator< (const varint& rhs) const
 		{
 			if (pstv < rhs.pstv)
 				return true;
@@ -272,7 +273,7 @@ namespace Meth
 			}
 			return false;
 		}
-		bool operator<=(const varint & rhs) const
+		bool operator<=(const varint& rhs) const
 		{
 			if (pstv < rhs.pstv)
 				return true;
@@ -288,7 +289,7 @@ namespace Meth
 			}
 			return true;
 		}
-		bool operator==(const varint & rhs) const
+		bool operator==(const varint& rhs) const
 		{
 			if (pstv != rhs.pstv)
 				return false;
@@ -300,7 +301,7 @@ namespace Meth
 			}
 			return true;
 		}
-		bool operator!=(const varint & rhs) const
+		bool operator!=(const varint& rhs) const
 		{
 			if (pstv != rhs.pstv)
 				return true;
@@ -313,27 +314,27 @@ namespace Meth
 			return false;
 		}
 
-		bool operator> (const unit & rhs) const
+		bool operator> (const unit& rhs) const
 		{
 			return *this > varint(rhs);
 		}
-		bool operator>=(const unit & rhs) const
+		bool operator>=(const unit& rhs) const
 		{
 			return *this >= varint(rhs);
 		}
-		bool operator< (const unit & rhs) const
+		bool operator< (const unit& rhs) const
 		{
 			return *this < varint(rhs);
 		}
-		bool operator<=(const unit & rhs) const
+		bool operator<=(const unit& rhs) const
 		{
 			return *this <= varint(rhs);
 		}
-		bool operator==(const unit & rhs) const
+		bool operator==(const unit& rhs) const
 		{
 			return *this == varint(rhs);
 		}
-		bool operator!=(const unit & rhs) const
+		bool operator!=(const unit& rhs) const
 		{
 			return *this != varint(rhs);
 		}
@@ -356,7 +357,7 @@ namespace Meth
 
 		varint& operator<<=(const size_t shift)
 		{
-			if (shift)
+			if (shift && value.size() != 0)
 			{
 				size_t lshift = shift % (unitbyte * 8);
 				size_t append = (shift - lshift) / (unitbyte * 8);
@@ -443,22 +444,27 @@ namespace Meth
 			reduce();
 			return *this;
 		}
+		varint& operator/=(const varint rhs)
+		{
+			*this = operator/(rhs);
+			return *this;
+		}
 		varint& operator%=(const varint rhs)
 		{
 			bool sign = pstv;
 			*this = abs();
 			varint divisor = rhs.abs();
 			divisor <<= leftmostone() - divisor.leftmostone();
-
 			while (*this >= rhs.abs())
 			{
-				cout << "this > div" << endl;
-				cout << bin() << divisor.bin() << endl;
+//				cout << "this > div" << endl;
+//				cout << bin() << divisor.bin() << endl;
 				if (*this >= divisor)
 					*this -= divisor;
 				divisor >>= 1;
-				system("pause");
+//				system("pause");
 			}
+			pstv = sign;
 			return *this;
 		}
 
@@ -466,6 +472,12 @@ namespace Meth
 		{
 			varint temp(*this);
 			temp.operator<<=(rhs);
+			return temp;
+		}
+		varint  operator>>(const size_t rhs) const
+		{
+			varint temp(*this);
+			temp.operator>>=(rhs);
 			return temp;
 		}
 
@@ -487,20 +499,40 @@ namespace Meth
 			temp.operator*=(rhs);
 			return temp;
 		}
-
-		varint operator/ (const varint rhs) const
+		varint  operator/ (const varint rhs) const
 		{
-			varint remainder = abs();
-			varint divisor = rhs.abs();
-
-			while (remainder > divisor)
+			if (rhs.sign() != 0)
 			{
-				varint tempdivisor = divisor << (remainder.leftmostone() - divisor.leftmostone());
+				varint divident = abs();
+				varint divisor = rhs.abs();
+				varint divisorshftd = divisor << (divident.leftmostone() - divisor.leftmostone());
+				varint result(0);
+				while (divisorshftd >= divisor)
+				{
+					if (divident >= divisorshftd)
+					{
+						divident -= divisorshftd;
+						result.increment(1);
+					}
+					result <<= 1;
+					divisorshftd >>= 1;
+				}
+				result >>= 1;
+				result.pstv = (pstv == rhs.pstv);
+				return result;
 			}
-			return remainder;
+			else
+				throw runtime_error("Divisor canot be zero!");
+		}
+		varint  operator% (const varint rhs) const
+		{
+			varint temp(*this);
+			temp.operator%=(rhs);
+			return temp;
 		}
 
-		varint& operator+=(const unit & rhs)
+
+		varint& operator+=(const unit& rhs)
 		{
 			return increment(rhs, 0);
 		}
@@ -520,16 +552,48 @@ namespace Meth
 			}
 			return y;
 		}
+/*		varint sqrt(ull n) const
+		{
+			varint x = abs();
+			varint y(1);
+				shift = 2
+				nShifted = n >> shift
+				# We check for nShifted being n, since some implementations
+				# perform shift operations modulo the word size.
+				while nShifted ≠ 0 and nShifted ≠ n :
+			shift = shift + 2
+				nShifted = n >> shift
+				shift = shift - 2
+
+				# Find digits of result.
+				result = 0
+				while shift ≥ 0:
+			result = result << 1
+				candidateResult = result + 1
+				if candidateResult* candidateResult ≤ n >> shift :
+					result = candidateResult
+					shift = shift - 2
+
+					return result
+		}//*/
+		varint log2() const
+		{
+			return varint(leftmostone());
+		}
 
 
+
+		
+	
 		size_t leftmostone() const
 		{
 			size_t r = 0;
+			if (value.size() == 0)
+				return 0;
 			unit temp = value.back();
 			while (temp >>= 1)
 				++r;
 			return unitbyte * 8 * (value.size() - 1) + r;
-			return 0;
 		}
 
 		void reduce()
@@ -566,34 +630,38 @@ namespace Meth
 		}
 	};
 
-/*class Frac
-{
-private:
-	map<ull, ull> factors;
-public:
-	Meth(ull nom, ull den = 1)
+	/*class Frac
 	{
+	private:
+		map<ull, ull> factors;
+	public:
+		Meth(ull nom, ull den = 1)
+		{
 
-	}
-};*/
+		}
+	};*/
 }
 
 using namespace Meth;
 
 int main()
 {
-	string hex = "0123456789ABCDEFFEDCBA9876543210FFFFFFFFFFFFFFFF";
+	string hex = "0123456789ABCDEFFEDCBA9876543210FFF2FDAFF3FFF9FC";
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	varint num(hex, 16, 1);
+	//varint num(hex, 16, 1);
+	varint num(358, 1);
 
-	varint snd(1234);
+	varint snd(17, 1);
 
 	cout << "A:\n" << num.bin() << endl << endl;
-//	cout << "B:\n" << snd.hex() << endl << endl;
+	//	cout << "B:\n" << snd.hex() << endl << endl;
 
-	num %= snd;
+	varint wyn;
+	num /= snd;
 
-	cout << "Sum:\n" << num.hex() << num.bin() << endl << endl;
+//	wyn <<= 1;
+
+	cout << "Wyn:\n" << num.hex() << num.bin() << endl << endl;
 }
