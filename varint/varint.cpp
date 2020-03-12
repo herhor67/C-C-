@@ -357,18 +357,22 @@ namespace Meth
 
 		varint& operator<<=(const size_t shift)
 		{
-			if (shift && value.size() != 0)
+			if (shift && value.size())
 			{
 				size_t lshift = shift % (unitbyte * 8);
-				size_t append = (shift - lshift) / (unitbyte * 8);
+				size_t append = shift / (unitbyte * 8);
 				unsigned r = 0;
 				unit temp = value.back();
 				while (temp >>= 1)
 					++r;
-				size_t old = value.size() - 1 + append;
+				size_t old = value.size() + append;
 				value.resize(old + 1 + (lshift >= unitbyte * 8 - r));
-				for (size_t i = value.size() - 1; i + 1 > 0; --i)
-					value.at(i) = ((i <= old && i >= append) ? value.at(i - append) << lshift : 0) | ((i - 1 <= old && i - 1 >= append) ? value.at(i - 1 - append) >> (unitbyte * 8 - lshift) : 0);
+				for (size_t i = value.size(); i > 0; --i)
+				{
+					size_t p1 = i - 1;
+					size_t p2 = i - 2;
+					value.at(p1) = ((p1 <= old && p1 >= append) ? value.at(p1 - append) << lshift : 0) | ((p2 <= old && p2 >= append) ? value.at(p2 - append) >> (unitbyte * 8 - lshift) : 0);
+				}
 			}
 			return *this;
 		}
@@ -505,6 +509,9 @@ namespace Meth
 			{
 				varint divident = abs();
 				varint divisor = rhs.abs();
+				if (divident < divisor)
+					return 0;
+
 				varint divisorshftd = divisor << (divident.leftmostone() - divisor.leftmostone());
 				varint result(0);
 				while (divisorshftd >= divisor)
@@ -552,39 +559,44 @@ namespace Meth
 			}
 			return y;
 		}
-/*		varint sqrt(ull n) const
+//*		
+		varint root(ull n = 2) const
 		{
 			varint x = abs();
-			varint y(1);
-				shift = 2
-				nShifted = n >> shift
-				# We check for nShifted being n, since some implementations
-				# perform shift operations modulo the word size.
-				while nShifted ≠ 0 and nShifted ≠ n :
-			shift = shift + 2
-				nShifted = n >> shift
-				shift = shift - 2
+			// Base cases 
+			if (x <= 1)
+				return x;
 
-				# Find digits of result.
-				result = 0
-				while shift ≥ 0:
-			result = result << 1
-				candidateResult = result + 1
-				if candidateResult* candidateResult ≤ n >> shift :
-					result = candidateResult
-					shift = shift - 2
-
-					return result
-		}//*/
+			// Do Binary Search for floor(sqrt(x)) 
+			varint beg(1);
+			varint end = x >> 1;/// n;
+			varint ans(0);
+			while (beg <= end)
+			{
+				varint mid = (beg + end) >> 1;
+				varint midpow = mid.pow(n);
+				
+				if (midpow == x)
+					return mid;
+				
+				if (midpow < x)
+				{
+					beg = mid + 1;
+					ans = mid;
+				}
+				else // midpow > x
+					end = mid - 1;
+			}
+			return ans;
+		}
+//*/
+		
 		varint log2() const
 		{
 			return varint(leftmostone());
 		}
-
-
-
 		
-	
+		
 		size_t leftmostone() const
 		{
 			size_t r = 0;
@@ -595,7 +607,7 @@ namespace Meth
 				++r;
 			return unitbyte * 8 * (value.size() - 1) + r;
 		}
-
+		
 		void reduce()
 		{
 			for (size_t i = value.size(); i > 0; --i)
@@ -606,7 +618,7 @@ namespace Meth
 			if (value.size() == 0)
 				pstv = 1;
 		}
-
+		
 		string hex() const
 		{
 			string result = string(pstv ? "+" : "-") + "0x\n";
@@ -651,17 +663,15 @@ int main()
 	string bin = "0111010101011101010";
 
 	//varint num(hex, 16, 1);
-	varint num(358, 1);
+	varint num(2, 1);
 
 	varint snd(17, 1);
 
-	cout << "A:\n" << num.bin() << endl << endl;
+	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
 	//	cout << "B:\n" << snd.hex() << endl << endl;
 
-	varint wyn;
-	num /= snd;
-
+	varint wyn = num.root(17);
 //	wyn <<= 1;
 
-	cout << "Wyn:\n" << num.hex() << num.bin() << endl << endl;
+	cout << "Wyn:\n" << wyn.hex() << wyn.bin() << endl << endl;
 }
