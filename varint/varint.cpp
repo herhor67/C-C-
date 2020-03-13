@@ -675,3 +675,4 @@ int main()
 
 	cout << "Wyn:\n" << wyn.hex() << wyn.bin() << endl << endl;
 }
+
