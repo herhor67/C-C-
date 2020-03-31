@@ -1,8 +1,9 @@
+#include <algorithm>
 #include <iostream>
-#include <string>
-#include <vector>
 #include <map>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -19,7 +20,7 @@ T gvoe(const vector<T>& vec, size_t pos)
 	return vec[pos];
 }
 
-vector<string> str_split_backward(const string& str, size_t split)
+vector<string> str_split_backward(const string & str, size_t split)
 {
 	vector<string> out;
 	out.reserve(str.length() / split + (str.length() % split) ? 1 : 0);
@@ -31,7 +32,7 @@ vector<string> str_split_backward(const string& str, size_t split)
 		out.push_back(str.substr(i, split));
 	return out;
 }
-vector<string> str_split(const string& str, size_t split)
+vector<string> str_split(const string & str, size_t split)
 {
 	vector<string> out;
 	out.reserve(str.length() / split + (str.length() % split) ? 1 : 0);
@@ -39,7 +40,7 @@ vector<string> str_split(const string& str, size_t split)
 		out.push_back(str.substr(i, split));
 	return out;
 }
-vector<char> str_explode(const string& str)
+vector<char>   str_explode(const string & str)
 {
 	vector<char> out;
 	out.reserve(str.length());
@@ -91,21 +92,7 @@ string oct2bin(string oct)
 	}
 	return bin;
 }
-
-ull integerSqrt(ull n)
-{
-	if (n < 2)
-		return n;
-	else
-	{
-		ull sC = integerSqrt(n >> 2) << 1;
-		ull lC = sC + 1;
-		if (lC * lC > n)
-			return sC;
-		else
-			return lC;
-	}
-}
+/*
 vector<ull> primes(ull limit)
 {
 	vector<ull> primes;
@@ -130,33 +117,30 @@ vector<ull> primes(ull limit)
 			primes.push_back(number);
 	}
 	return primes;
-}
+}*/
 
 namespace Meth
 {
-	class varint
+	class VarInt
 	{
-	public:
-		bool pstv = 1;
+	private:
 		vector<unit> value;
-		varint() {}
-		varint(unit num, bool noneg = 1)
+	public:
+		// ===== { Constructors } ===== //
+		VarInt() {}
+		VarInt(unit num)
 		{
-			pstv = noneg;
-			value.push_back(num);
-			reduce();
+			if (num)
+				value.push_back(num);
 		}
-		varint(string num, size_t base = 16, bool noneg = 1)
+		VarInt(string num, size_t base = 16)
 		{
-			pstv = noneg;
 			if (base == 16) // hex
 			{
 				vector<string> pieces = str_split_backward(num, unitbyte * 2);
 				value.reserve(pieces.size());
 				for (vector<string>::reverse_iterator i = pieces.rbegin(); i != pieces.rend(); ++i)
 					value.push_back(stoull(*i, 0, 16));
-				//			for (string piece : pieces)
-				//				value.push_back(stoull(piece, 0, 16));
 			}
 			else if (base == 8) // oct
 			{
@@ -164,8 +148,6 @@ namespace Meth
 				value.reserve(pieces.size());
 				for (vector<string>::reverse_iterator i = pieces.rbegin(); i != pieces.rend(); ++i)
 					value.push_back(stoull(*i, 0, 2));
-				//			for (string piece : pieces)
-				//				value.push_back(stoull(piece, 0, 2));
 			}
 			else if (base == 2) // bin
 			{
@@ -173,16 +155,37 @@ namespace Meth
 				value.reserve(pieces.size());
 				for (vector<string>::reverse_iterator i = pieces.rbegin(); i != pieces.rend(); ++i)
 					value.push_back(stoull(*i, 0, 2));
-				//			for (string piece : pieces)
-				//				value.push_back(stoull(piece, 0, 2));
 			}
 			else // non pow2 systems
 			{
+				cout << "Y ur gay?";
 			}
 			reduce();
 		}
 
-		varint& increment(unit incr, size_t pos = 0)
+		// ===== { Operational } ===== //
+		VarInt& reduce()
+		{
+			for (size_t i = value.size(); i > 0; --i)
+				if (value.at(i - 1) == 0)
+					value.pop_back();
+				else
+					break;
+			return *this;
+		}
+		VarInt& nullify()
+		{
+			value.clear();
+			return *this;
+		}
+		bool    isnull() const
+		{
+			if (value.size() == 0)
+				return true;
+			return false;
+		}
+
+		VarInt& increment(unit incr, size_t pos = 0)
 		{
 			do
 			{
@@ -199,168 +202,62 @@ namespace Meth
 				bool s = value.at(pos) >> (unitbyte * 8 - 1);
 				incr = (!s && (a || b) || a && b);
 				++pos;
-			}
-			while (incr != 0);
+			} while (incr != 0);
 			return *this;
 		}
-
-		varint abs()  const
+		VarInt& decrement(unit decr, size_t pos = 0)
 		{
-			varint temp(*this);
-			temp.pstv = 1;
-			return temp;
+			do
+			{
+				if (pos >= value.size())
+					throw invalid_argument("Cannot subtract from null!");
+				
+				bool a = value.at(pos) >> (unitbyte * 8 - 1);
+				bool b = decr >> (unitbyte * 8 - 1);
+				value.at(pos) -= decr;
+				bool s = value.at(pos) >> (unitbyte * 8 - 1);
+				decr = (s && (!a || b) || !a && b);
+				++pos;
+			} while (decr != 0);
+			return *this;
 		}
-		int    sign() const
+	
+		/*VarInt twoscompl(size_t padTo = 0) const
 		{
-			if (value.size() == 0)
-				return 0;
-			return pstv * 2 - 1;
-		}
-		varint cmpl(size_t pad = 0) const
-		{
-			varint temp(~*this);
+			VarInt temp(~*this);
 			temp.increment(1, 0);
-			for (size_t i = temp.value.size(); i < pad; ++i)
+			for (size_t i = temp.value.size(); i < padTo; ++i)
 				temp.value.push_back(~0);
 			return temp;
-		}
-
-		bool operator> (const varint& rhs) const
+		}*/
+		size_t highestbit() const
 		{
-			if (pstv > rhs.pstv)
-				return true;
-			if (pstv < rhs.pstv)
-				return false;
-			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
-					return pstv;
-				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
-					return !pstv;
-			}
-			return false;
+			size_t r = 0;
+			if (value.size() == 0)
+				return 0;
+			unit temp = value.back();
+			while (temp >>= 1)
+				++r;
+			return unitbyte * 8 * (value.size() - 1) + r;
 		}
-		bool operator>=(const varint& rhs) const
+		
+		// ===== { Bitwise ops } ===== //
+		VarInt  operator~() const
 		{
-			if (pstv > rhs.pstv)
-				return true;
-			if (pstv < rhs.pstv)
-				return false;
-			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
-					return pstv;
-				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
-					return !pstv;
-			}
-			return true;
-		}
-		bool operator< (const varint& rhs) const
-		{
-			if (pstv < rhs.pstv)
-				return true;
-			if (pstv > rhs.pstv)
-				return false;
-			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
-					return pstv;
-				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
-					return !pstv;
-			}
-			return false;
-		}
-		bool operator<=(const varint& rhs) const
-		{
-			if (pstv < rhs.pstv)
-				return true;
-			if (pstv > rhs.pstv)
-				return false;
-			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
-					return pstv;
-				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
-					return !pstv;
-			}
-			return true;
-		}
-		bool operator==(const varint& rhs) const
-		{
-			if (pstv != rhs.pstv)
-				return false;
-			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(value, i - 1) != gvoe(rhs.value, i - 1))
-					return false;
-			}
-			return true;
-		}
-		bool operator!=(const varint& rhs) const
-		{
-			if (pstv != rhs.pstv)
-				return true;
-			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(value, i - 1) != gvoe(rhs.value, i - 1))
-					return true;
-			}
-			return false;
-		}
-
-		bool operator> (const unit& rhs) const
-		{
-			return *this > varint(rhs);
-		}
-		bool operator>=(const unit& rhs) const
-		{
-			return *this >= varint(rhs);
-		}
-		bool operator< (const unit& rhs) const
-		{
-			return *this < varint(rhs);
-		}
-		bool operator<=(const unit& rhs) const
-		{
-			return *this <= varint(rhs);
-		}
-		bool operator==(const unit& rhs) const
-		{
-			return *this == varint(rhs);
-		}
-		bool operator!=(const unit& rhs) const
-		{
-			return *this != varint(rhs);
-		}
-
-		varint  operator- () const
-		{
-			varint temp(*this);
-			temp.pstv = !pstv;
-			return temp;
-		}
-		varint  operator~ () const
-		{
-			varint temp;
+			VarInt temp;
 			temp.value.resize(value.size());
-			temp.pstv = !pstv;
 			for (size_t i = temp.value.size(); i > 0; --i)
 				temp.value.at(i - 1) = ~value.at(i - 1);
+			temp.reduce();
 			return temp;
 		}
 
-		varint& operator<<=(const size_t shift)
+		VarInt& operator<<=(size_t rhs)
 		{
-			if (shift && value.size())
+			if (rhs && value.size())
 			{
-				size_t lshift = shift % (unitbyte * 8);
-				size_t append = shift / (unitbyte * 8);
+				size_t lshift = rhs % (unitbyte * 8);
+				size_t append = rhs / (unitbyte * 8);
 				unsigned r = 0;
 				unit temp = value.back();
 				while (temp >>= 1)
@@ -373,181 +270,350 @@ namespace Meth
 					size_t p2 = i - 2;
 					value.at(p1) = ((p1 <= old && p1 >= append) ? value.at(p1 - append) << lshift : 0) | ((p2 <= old && p2 >= append) ? value.at(p2 - append) >> (unitbyte * 8 - lshift) : 0);
 				}
-			}
-			return *this;
-		}
-		varint& operator>>=(const size_t shift)
-		{
-			if (shift)
-			{
-				size_t rshift = shift % (unitbyte * 8);
-				size_t remove = (shift - rshift) / (unitbyte * 8);
-				unsigned r = 0;
-
-				//			size_t old = value.size() - 1 + append;
-				for (size_t i = 0; i < value.size(); ++i)
-					value.at(i) = (gvoe(value, i + remove) >> rshift) | (rshift ? (gvoe(value, i + 1 + remove) << (unitbyte * 8 - rshift)) : 0);
-				//			value.resize(old + 1 + (lshift >= unitbyte * 8 - r));
 				reduce();
 			}
 			return *this;
 		}
-
-		varint& operator+=(const varint rhs)
+		VarInt& operator>>=(size_t rhs)
 		{
-			if (sign() == 0)
+			if (rhs)
 			{
-				value = rhs.value;
-				pstv = rhs.pstv;
+				size_t rshift = rhs % (unitbyte * 8);
+				size_t remove = rhs / (unitbyte * 8);
+				for (size_t i = 0; i < value.size(); ++i)
+					value.at(i) = (gvoe(value, i + remove) >> rshift) | (rshift ? (gvoe(value, i + 1 + remove) << (unitbyte * 8 - rshift)) : 0);
+				reduce();
 			}
-			else if (rhs.sign() == 0) {}
-			else if (sign() == rhs.sign())
-			{
-				for (size_t i = 0; i < rhs.value.size(); ++i)
-					increment(gvoe(rhs.value, i), i);
-			}
-			else if (abs() == rhs.abs())
-			{
-				value.clear();
-			}
-			else if (abs() > rhs.abs())
-			{
-				varint cpl = rhs.cmpl(value.size());
-				for (size_t i = 0; i < cpl.value.size(); ++i)
-					increment(gvoe(cpl.value, i), i);
-				value.pop_back();
-			}
-			else// if (abs() < rhs.abs())
-			{
-				*this = cmpl(rhs.value.size());
-				pstv = rhs.pstv;
-				for (size_t i = 0; i < rhs.value.size(); ++i)
-					increment(gvoe(rhs.value, i), i);
-				value.pop_back();
-			}
-			reduce();
 			return *this;
 		}
-		varint& operator-=(const varint rhs)
+		VarInt  operator<< (size_t rhs) const
 		{
-			return operator+=(-rhs);
-		}
-		varint& operator*=(const varint rhs)
-		{
-			pstv = (pstv == rhs.pstv); // n-xor: +*+=+, -*-=+, +*-=-, -*+=+
-			varint temp = *this;
-			value.clear();
-			value.resize(temp.value.size() + rhs.value.size());
-			for (size_t u = 0; u < rhs.value.size(); ++u)
-				for (size_t b = 0; b < unitbyte * 8; ++b)
-				{
-					if (rhs.value.at(u) & (unit(1) << b))
-						operator+=(temp);
-					temp <<= 1;
-				}
-			reduce();
-			return *this;
-		}
-		varint& operator/=(const varint rhs)
-		{
-			*this = operator/(rhs);
-			return *this;
-		}
-		varint& operator%=(const varint rhs)
-		{
-			bool sign = pstv;
-			*this = abs();
-			varint divisor = rhs.abs();
-			divisor <<= leftmostone() - divisor.leftmostone();
-			while (*this >= rhs.abs())
-			{
-//				cout << "this > div" << endl;
-//				cout << bin() << divisor.bin() << endl;
-				if (*this >= divisor)
-					*this -= divisor;
-				divisor >>= 1;
-//				system("pause");
-			}
-			pstv = sign;
-			return *this;
-		}
-
-		varint  operator<<(const size_t rhs) const
-		{
-			varint temp(*this);
+			VarInt temp(*this);
 			temp.operator<<=(rhs);
 			return temp;
 		}
-		varint  operator>>(const size_t rhs) const
+		VarInt  operator>> (size_t rhs) const
 		{
-			varint temp(*this);
+			VarInt temp(*this);
 			temp.operator>>=(rhs);
 			return temp;
 		}
 
-		varint  operator+ (const varint rhs) const
+		VarInt& operator&=(VarInt rhs)
 		{
-			varint temp(*this);
-			temp.operator+=(rhs);
-			return temp;
-		}
-		varint  operator- (const varint rhs) const
-		{
-			varint temp(*this);
-			temp.operator+=(-rhs);
-			return temp;
-		}
-		varint  operator* (const varint rhs) const
-		{
-			varint temp(*this);
-			temp.operator*=(rhs);
-			return temp;
-		}
-		varint  operator/ (const varint rhs) const
-		{
-			if (rhs.sign() != 0)
+			if (isnull() == 1 || rhs.isnull() == 1)
+				nullify();
+			else
 			{
-				varint divident = abs();
-				varint divisor = rhs.abs();
-				if (divident < divisor)
-					return 0;
+				if (value.size() > rhs.value.size())
+					value.resize(rhs.value.size());
+				for (size_t i = 0; i < value.size(); ++i)
+					value.at(i) &= rhs.value.at(i);
+				reduce();
+			}
+			return *this;
+		}
+		VarInt& operator|=(VarInt rhs)
+		{
+			if (isnull() == 1)
+				value = rhs.value;
+			else if (rhs.isnull() == 1) {}
+			else
+			{
+				if (value.size() < rhs.value.size())
+					value.resize(rhs.value.size());
+				for (size_t i = 0; i < value.size(); ++i)
+					value.at(i) |= rhs.value.at(i);
+				reduce();
+			}
+			return *this;
+		}
+		VarInt& operator^=(VarInt rhs)
+		{
+			if (isnull() == 1)
+				value = rhs.value;
+			else if (rhs.isnull() == 1) {}
+			else
+			{
+				if (value.size() < rhs.value.size())
+					value.resize(rhs.value.size());
+				for (size_t i = 0; i < value.size(); ++i)
+					value.at(i) ^= rhs.value.at(i);
+				reduce();
+			}
+			return *this;
+		}
+		friend VarInt operator&(VarInt lhs, const VarInt& rhs)
+		{
+			lhs &= rhs;
+			return lhs;
+		}
+		friend VarInt operator|(VarInt lhs, const VarInt& rhs)
+		{
+			lhs |= rhs;
+			return lhs;
+		}
+		friend VarInt operator^(VarInt lhs, const VarInt& rhs)
+		{
+			lhs ^= rhs;
+			return lhs;
+		}
 
-				varint divisorshftd = divisor << (divident.leftmostone() - divisor.leftmostone());
-				varint result(0);
+		// ===== { Comparison ops } ===== //
+		bool operator> (const VarInt& rhs) const
+		{
+			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
+			for (size_t i = maxize; i > 0; --i)
+			{
+				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+					return true;
+				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+					return false;
+			}
+			return false;
+		}
+		bool operator>=(const VarInt& rhs) const
+		{
+			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
+			for (size_t i = maxize; i > 0; --i)
+			{
+				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+					return true;
+				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+					return false;
+			}
+			return true;
+		}
+		bool operator< (const VarInt& rhs) const
+		{
+			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
+			for (size_t i = maxize; i > 0; --i)
+			{
+				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+					return true;
+				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+					return false;
+			}
+			return false;
+		}
+		bool operator<=(const VarInt& rhs) const
+		{
+			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
+			for (size_t i = maxize; i > 0; --i)
+			{
+				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+					return true;
+				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+					return false;
+			}
+			return true;
+		}
+		bool operator==(const VarInt& rhs) const
+		{
+			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
+			for (size_t i = maxize; i > 0; --i)
+			{
+				if (gvoe(value, i - 1) != gvoe(rhs.value, i - 1))
+					return false;
+			}
+			return true;
+		}
+		bool operator!=(const VarInt& rhs) const
+		{
+			size_t maxize = value.size() >= rhs.value.size() ? value.size() : rhs.value.size();
+			for (size_t i = maxize; i > 0; --i)
+			{
+				if (gvoe(value, i - 1) != gvoe(rhs.value, i - 1))
+					return true;
+			}
+			return false;
+		}
+		/*
+		bool operator>  (const unit & rhs) const
+		{
+			return *this > VarInt(rhs);
+		}
+		bool operator>= (const unit & rhs) const
+		{
+			return *this >= VarInt(rhs);
+		}
+		bool operator<  (const unit & rhs) const
+		{
+			return *this < VarInt(rhs);
+		}
+		bool operator<= (const unit & rhs) const
+		{
+			return *this <= VarInt(rhs);
+		}
+		bool operator== (const unit & rhs) const
+		{
+			return *this == VarInt(rhs);
+		}
+		bool operator!= (const unit & rhs) const
+		{
+			return *this != VarInt(rhs);
+		}
+		*/
+
+		// ===== { Math ops } ===== //
+		VarInt& operator+=(const VarInt& rhs)
+		{
+			if (isnull() == 1)
+				value = rhs.value;
+			else if (rhs.isnull() == 1)
+				{}
+			else
+				for (size_t i = 0; i < rhs.value.size(); ++i)
+					increment(gvoe(rhs.value, i), i);
+			reduce();
+			return *this;
+		}
+		VarInt& operator-=(const VarInt& rhs)
+		{
+			if (operator==(rhs))
+				nullify();
+			else if (operator>(rhs))
+				for (size_t i = 0; i < rhs.value.size(); ++i)
+					decrement(gvoe(rhs.value, i), i);
+			else if (operator<(rhs))
+			{
+				VarInt subtrahend(*this);
+				value = rhs.value;
+				for (size_t i = 0; i < subtrahend.value.size(); ++i)
+					decrement(gvoe(subtrahend.value, i), i);
+			}
+			else
+				throw runtime_error("Something is no yes:\nA!=B, A!>B, A!<B");
+
+			reduce();
+			return *this;
+		}
+		VarInt& operator*=(const VarInt& rhs)
+		{
+			if (isnull() == 1 || rhs.isnull() == 1)
+				nullify();
+			else if (operator==(1))
+				value = rhs.value;
+			else if (rhs.operator==(1))
+			{}
+			else
+			{
+				VarInt multiplicand = max(*this, rhs);
+				VarInt multiplier   = min(*this, rhs);
+				VarInt mask(1);
+				nullify();
+				value.resize(multiplier.value.size() + multiplicand.value.size());
+				size_t highbit = multiplier.highestbit();
+				for (size_t b = 0; b <= highbit; ++b)
+				{
+					if (!(multiplier & mask).isnull())
+						operator+=(multiplicand);
+					mask <<= 1;
+					multiplicand <<= 1;
+				}
+				reduce();
+			}
+			return *this;
+		}
+		VarInt& operator/=(const VarInt& rhs)
+		{
+			if (rhs.isnull() == 1)
+				throw runtime_error("Divisor canot be zero!");
+			else if (operator<(rhs))
+				nullify();
+			else
+			{
+				VarInt divident(*this);
+				VarInt divisor(rhs);
+
+				VarInt divisorshftd = divisor << (divident.highestbit() - divisor.highestbit());
+				nullify();
 				while (divisorshftd >= divisor)
 				{
 					if (divident >= divisorshftd)
 					{
 						divident -= divisorshftd;
-						result.increment(1);
+						increment(1);
 					}
-					result <<= 1;
+					operator<<=(1);
 					divisorshftd >>= 1;
 				}
-				result >>= 1;
-				result.pstv = (pstv == rhs.pstv);
-				return result;
+				operator>>=(1);
+				return *this;
 			}
-			else
-				throw runtime_error("Divisor canot be zero!");
 		}
-		varint  operator% (const varint rhs) const
+		VarInt& operator%=(const VarInt& rhs)
 		{
-			varint temp(*this);
-			temp.operator%=(rhs);
-			return temp;
-		}
-
-
-		varint& operator+=(const unit& rhs)
-		{
-			return increment(rhs, 0);
+			VarInt divisor(rhs);
+			divisor <<= highestbit() - divisor.highestbit();
+			while (operator>=(rhs))
+			{
+				if (operator>=(divisor))
+					*this -= divisor;
+				divisor >>= 1;
+			}
+			return *this;
 		}
 
-		varint pow(ull n) const
+		friend VarInt operator+(VarInt lhs, const VarInt& rhs)
 		{
-			varint x(*this);
-			varint y(1);
+			lhs += rhs;
+			return lhs;
+		}
+		friend VarInt operator-(VarInt lhs, const VarInt& rhs)
+		{
+			lhs -= rhs;
+			return lhs;
+		}
+		friend VarInt operator*(VarInt lhs, const VarInt& rhs)
+		{
+			lhs *= rhs;
+			return lhs;
+		}
+		friend VarInt operator/(VarInt lhs, const VarInt& rhs)
+		{
+			lhs /= rhs;
+			return lhs;
+		}
+		friend VarInt operator%(VarInt lhs, const VarInt& rhs)
+		{
+			lhs %= rhs;
+			return lhs;
+		}
+
+		// ===== { Indecr ops } ===== //
+		VarInt& operator++()
+		{
+			return increment(1);
+		}
+		VarInt  operator++(int)
+		{
+			VarInt tmp(*this);
+			operator++();
+			return tmp;
+		}
+		VarInt& operator--()
+		{
+			return decrement(1);
+		}
+		VarInt  operator--(int)
+		{
+			VarInt tmp(*this);
+			operator--();
+			return tmp;
+		}
+
+		//*
+		operator bool() const
+		{
+			return static_cast<bool>(value.size());
+		}//*/
+
+		// ===== { Other math } ===== //
+		VarInt pow(ull n = 2) const
+		{
+			VarInt x(*this);
+			VarInt y(1);
 			while (true)
 			{
 				if (n & 1)
@@ -559,26 +625,25 @@ namespace Meth
 			}
 			return y;
 		}
-//*		
-		varint root(ull n = 2) const
+		VarInt root(ull n = 2) const
 		{
-			varint x = abs();
+			VarInt x(*this);
 			// Base cases 
 			if (x <= 1)
 				return x;
 
-			// Do Binary Search for floor(sqrt(x)) 
-			varint beg(1);
-			varint end = x >> 1;/// n;
-			varint ans(0);
+			// Do Binary Search for floor(sqrt(x))
+			VarInt beg(1);
+			VarInt end = x >> 1;
+			VarInt ans(0);
 			while (beg <= end)
 			{
-				varint mid = (beg + end) >> 1;
-				varint midpow = mid.pow(n);
-				
+				VarInt mid = (beg + end) >> 1;
+				VarInt midpow = mid.pow(n);
+
 				if (midpow == x)
 					return mid;
-				
+
 				if (midpow < x)
 				{
 					beg = mid + 1;
@@ -589,53 +654,29 @@ namespace Meth
 			}
 			return ans;
 		}
-//*/
-		
-		varint log2() const
+		VarInt log2() const
 		{
-			return varint(leftmostone());
+			return VarInt(highestbit());
 		}
-		
-		
-		size_t leftmostone() const
-		{
-			size_t r = 0;
-			if (value.size() == 0)
-				return 0;
-			unit temp = value.back();
-			while (temp >>= 1)
-				++r;
-			return unitbyte * 8 * (value.size() - 1) + r;
-		}
-		
-		void reduce()
-		{
-			for (size_t i = value.size(); i > 0; --i)
-				if (value.at(i - 1) == 0)
-					value.pop_back();
-				else
-					break;
-			if (value.size() == 0)
-				pstv = 1;
-		}
-		
+
+		// ===== { Print num } ===== //
 		string hex() const
 		{
-			string result = string(pstv ? "+" : "-") + "0x\n";
+			string result = /*string(pstv ? "+" : "-") +*/ "0x\n";
 			for (size_t i = value.size(); i > 0; --i)
 				result.append(num2hex(value.at(i - 1)) + '\n');
 			return result;
 		}
 		string dec() const
 		{
-			string result = string(pstv ? "+" : "-") + "0d\n";
+			string result = /*string(pstv ? "+" : "-") +*/ "0d\n";
 			for (size_t i = value.size(); i > 0; --i)
 				result.append(to_string(value.at(i - 1)) + '\n');
 			return result;
 		}
 		string bin() const
 		{
-			string result = string(pstv ? "+" : "-") + "0b\n";
+			string result = /*string(pstv ? "+" : "-") +*/ "0b\n";
 			for (size_t i = value.size(); i > 0; --i)
 				result.append(num2bin(value.at(i - 1)) + '\n');
 			return result;
@@ -662,16 +703,16 @@ int main()
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	//varint num(hex, 16, 1);
-	varint num(2, 1);
+	//VarInt num(bin, 2);
+	VarInt num(13);
 
-	varint snd(17, 1);
+	//VarInt snd("0111010101011101010", 2);
+	VarInt snd(4);
 
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
-	//	cout << "B:\n" << snd.hex() << endl << endl;
+	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	varint wyn = num.root(17);
-//	wyn <<= 1;
+	VarInt wyn = num.pow(4);
 
 	cout << "Wyn:\n" << wyn.hex() << wyn.bin() << endl << endl;
 }
