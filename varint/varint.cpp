@@ -185,6 +185,11 @@ namespace Meth
 			return false;
 		}
 
+		bool operator!() const
+		{
+			return !static_cast<bool>(value.size());
+		}
+
 		VarInt& increment(unit incr, size_t pos = 0)
 		{
 			do
@@ -603,12 +608,6 @@ namespace Meth
 			return tmp;
 		}
 
-		//*
-		operator bool() const
-		{
-			return static_cast<bool>(value.size());
-		}//*/
-
 		// ===== { Other math } ===== //
 		VarInt pow(ull n = 2) const
 		{
@@ -703,8 +702,8 @@ int main()
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	//VarInt num(bin, 2);
-	VarInt num(13);
+	VarInt num(hex, 16);
+	//VarInt num(13);
 
 	//VarInt snd("0111010101011101010", 2);
 	VarInt snd(4);
@@ -712,7 +711,7 @@ int main()
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
 	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	VarInt wyn = num.pow(4);
+	VarInt wyn = num.root(17);
 
 	cout << "Wyn:\n" << wyn.hex() << wyn.bin() << endl << endl;
 }
