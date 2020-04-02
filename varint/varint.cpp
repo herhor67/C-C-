@@ -183,9 +183,7 @@ namespace Meth
 		}
 		bool    isnull() const
 		{
-			if (value.size() == 0)
-				return true;
-			return false;
+			return !static_cast<bool>(value.size());
 		}
 
 		bool operator!() const
@@ -238,6 +236,7 @@ namespace Meth
 				temp.value.push_back(~0);
 			return temp;
 		}*/
+
 		size_t highestbit() const
 		{
 			size_t r = 0;
@@ -248,7 +247,16 @@ namespace Meth
 				++r;
 			return unitbits * (value.size() - 1) + r;
 		}
-		
+		bool getbit(size_t pos) const
+		{
+			size_t el = pos / unitbits;
+			size_t bt = pos % unitbits;
+			if (el >= value.size())
+				return false;
+			else
+				return value.at(el) & (ull(1) << bt);
+		}
+
 		// ====={ Bitwise ops }=====
 		VarInt  operator~() const
 		{
@@ -509,7 +517,7 @@ namespace Meth
 		}
 		VarInt& operator*=(const VarInt& rhs)
 		{
-			if (isnull() == 1 || rhs.isnull() == 1)
+			if (isnull() || rhs.isnull())
 				nullify();
 			else if (operator==(1))
 				value = rhs.value;
@@ -517,17 +525,24 @@ namespace Meth
 			{}
 			else
 			{
-				VarInt multiplicand = max(*this, rhs);
-				VarInt multiplier   = min(*this, rhs);
-				VarInt mask(1);
+				VarInt multiplicand, multiplier;
+				if (operator>=(rhs))
+				{
+					multiplicand = *this;
+					multiplier = rhs;
+				}
+				else
+				{
+					multiplicand = rhs;
+					multiplier = *this;
+				}
 				nullify();
 				value.resize((multiplier.highestbit() + multiplicand.highestbit() - 1) / unitbits + 1);
 				size_t highbit = multiplier.highestbit();
 				for (size_t b = 0; b <= highbit; ++b)
 				{
-					if (!(multiplier & mask).isnull())
+					if (multiplier.getbit(b))
 						operator+=(multiplicand);
-					mask <<= 1;
 					multiplicand <<= 1;
 				}
 //				reduce();
@@ -661,7 +676,7 @@ namespace Meth
 				VarInt y(1);
 				while (true)
 				{
-					if (!!(n & 1))
+					if (n.getbit(0))
 						y *= x;
 					n >>= 1;
 					if (n == 0)
@@ -675,16 +690,17 @@ namespace Meth
 		{
 			auto t1 = chrono::high_resolution_clock::now();
 
-			// Base cases 
-			if (n == 0)
+			// Base cases
+			// done in this order, as 0th root of 0 is 0, of 1 is 1 and anything else gives infinity
 			if (operator<=(1))
 				return *this;
+			if (n == 0)
+				throw invalid_argument("Degree of root canot be zero!");
 
 			// Do Binary Search for floor(sqrt(x))
-//			VarInt beg(1);
-//			VarInt end = operator>>(1);
+
 			VarInt beg = VarInt(1) << (highestbit() / n);
-			VarInt end = VarInt(1) << (highestbit() / n + 1);
+			VarInt end = beg << 1;
 
 			if (operator==(beg.pow(n)))
 			{
@@ -701,18 +717,17 @@ namespace Meth
 			while (beg <= end)
 			{
 				VarInt mid = (beg + end) >> 1;
-				VarInt midpow = mid.pow(n);
-//				cout << "Mid:" << endl << mid.bin() << endl;
+				cout << "Mid:" << endl << mid.bin() << endl;
 
-				if (operator==(midpow))
+				int gtltoe = cmp(mid.pow(n));
+				if (gtltoe == 0)
 					return mid;
-
-				if (operator>(midpow))
+				else if (gtltoe > 0)
 				{
 					beg = mid + 1;
 					ans = mid;
 				}
-				else // midpow > x
+				else //if (gtltoe < 0)
 					end = mid - 1;
 			}
 			auto t2 = chrono::high_resolution_clock::now();
@@ -772,7 +787,7 @@ int main()
 	VarInt num(hex, 16);
 	//VarInt num(2);
 
-	VarInt snd(123);
+	VarInt snd(2);
 
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
 	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
