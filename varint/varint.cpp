@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdlib>
 #include <iostream>
 #include <map>
 #include <stdexcept>
@@ -11,8 +12,7 @@ using namespace std;
 
 typedef unsigned long long ull;
 typedef long long sll;
-typedef unsigned long long unit; //unsigned int;
-constexpr unsigned unitbyte = sizeof(unit);
+constexpr unsigned unitbyte = sizeof(ull);
 constexpr unsigned unitbits = 8 * unitbyte;
 
 template <typename T>
@@ -52,17 +52,17 @@ vector<char>   str_explode(const string & str)
 	return out;
 }
 
-string num2bin(unit num)
+string num2bin(ull num)
 {
 	string temp;
-	for (unit i = (unit)1 << (unitbits - 1); i != 0; i >>= 1)
+	for (ull i = (ull)1 << (unitbits - 1); i != 0; i >>= 1)
 		temp.push_back((num & i) ? '1' : '0');
 	return temp;
 }
-string num2hex(unit num)
+string num2hex(ull num)
 {
 	string temp;
-	for (unit i = unit(1) << (unitbits - 1); i != 0; i >>= 1)
+	for (ull i = ull(1) << (unitbits - 1); i != 0; i >>= 1)
 	{
 		char dec = bool(num & i);
 		i >>= 1;
@@ -127,14 +127,21 @@ namespace Meth
 	class UVarInt
 	{
 	protected:
-		vector<unit> value;
+		vector<ull> value;
 	public:
 		// ====={ Constructors }=====
 		UVarInt() {}
-		UVarInt(unit num)
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type* = nullptr>
+		UVarInt(Integral num)
 		{
 			if (num)
 				value.push_back(num);
+		}
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value&& is_signed<Integral>::value, Integral>::type* = nullptr>
+		UVarInt(Integral num)
+		{
+			if (num)
+				value.push_back(abs(num));
 		}
 		UVarInt(string num, size_t base = 16)
 		{
@@ -191,7 +198,7 @@ namespace Meth
 			return !static_cast<bool>(value.size());
 		}
 
-		UVarInt& increment(unit incr, size_t pos = 0)
+		UVarInt& increment(ull incr, size_t pos = 0)
 		{
 			do
 			{
@@ -211,7 +218,7 @@ namespace Meth
 			} while (incr != 0);
 			return *this;
 		}
-		UVarInt& decrement(unit decr, size_t pos = 0)
+		UVarInt& decrement(ull decr, size_t pos = 0)
 		{
 			do
 			{
@@ -242,7 +249,7 @@ namespace Meth
 			size_t r = 0;
 			if (value.size() == 0)
 				return 0;
-			unit temp = value.back();
+			ull temp = value.back();
 			while (temp >>= 1)
 				++r;
 			return unitbits * (value.size() - 1) + r;
@@ -259,7 +266,7 @@ namespace Meth
 				++el;
 			}
 			size_t r = 0;
-			unit temp = value.at(el);
+			ull temp = value.at(el);
 			while (temp <<= 1)
 				++r;
 			return unitbits * (el+1) - r-1;
@@ -292,7 +299,7 @@ namespace Meth
 				size_t lshift = rhs % unitbits;
 				size_t append = rhs / unitbits;
 				unsigned r = 0;
-				unit temp = value.back();
+				ull temp = value.back();
 				while (temp >>= 1)
 					++r;
 				size_t old = value.size() + append;
@@ -658,6 +665,10 @@ namespace Meth
 				return pair<UVarInt, UVarInt>(quotient, divident);
 			}
 		}
+		UVarInt operator- () const
+		{
+			return *this;
+		}
 
 		// ====={ Indecr ops }=====
 		UVarInt& operator++()
@@ -682,7 +693,7 @@ namespace Meth
 		}
 
 		// ====={ Other math }=====
-		UVarInt pow(UVarInt n) const
+		UVarInt  pow(UVarInt n = 2) const
 		{
 			if (n.isnull())
 				return 1;
@@ -788,11 +799,20 @@ namespace Meth
 	public:
 		// ====={ Constructors }=====
 		SVarInt() {}
-		SVarInt(unit num, bool neg = false) : UVarInt(num)
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type* = nullptr>
+		SVarInt(Integral num) : UVarInt(num)
+		{
+		}
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value &&  is_signed<Integral>::value, Integral>::type* = nullptr>
+		SVarInt(Integral num) : UVarInt(num)
+		{
+			negative = (num < 0);
+		}
+		SVarInt(string num, size_t base = 16, bool neg = false) : UVarInt(num, base)
 		{
 			negative = neg;
 		}
-		SVarInt(string num, size_t base = 16, bool neg = false) : UVarInt(num, base)
+		SVarInt(UVarInt num, bool neg = false) : UVarInt(num)
 		{
 			negative = neg;
 		}
@@ -909,6 +929,155 @@ namespace Meth
 			}
 		}
 
+		// ====={ Math ops }=====
+		SVarInt& operator+=(const SVarInt& rhs)
+		{
+			if (negative == rhs.negative)
+			{
+				UVarInt::operator+=(rhs);
+			}
+			else
+			{
+				UVarInt::operator-=(rhs);
+				if (UVarInt::operator<(rhs))
+					negative = rhs.negative;
+			}
+			reduce();
+			return *this;
+		}
+		SVarInt& operator-=(const SVarInt& rhs)
+		{
+			if (negative == rhs.negative)
+			{
+				UVarInt::operator-=(rhs);
+				if (UVarInt::operator<(rhs))
+					negative = !rhs.negative;
+			}
+			else
+			{
+				UVarInt::operator+=(rhs);
+			}
+			reduce();
+			return *this;
+		}
+		SVarInt& operator*=(const SVarInt& rhs)
+		{
+			UVarInt::operator*=(rhs);
+			negative = (negative != rhs.negative);
+			return *this;
+		}
+		SVarInt& operator/=(const SVarInt& rhs)
+		{
+			UVarInt::operator/=(rhs);
+			negative = (negative != rhs.negative);
+			reduce();
+			return *this;
+		}
+		SVarInt& operator%=(const SVarInt& rhs)
+		{
+			UVarInt::operator%=(rhs);
+			reduce();
+			return *this;
+		}
+
+		friend SVarInt operator+(SVarInt lhs, const SVarInt& rhs)
+		{
+			lhs += rhs;
+			return lhs;
+		}
+		friend SVarInt operator-(SVarInt lhs, const SVarInt& rhs)
+		{
+			lhs -= rhs;
+			return lhs;
+		}
+		friend SVarInt operator*(SVarInt lhs, const SVarInt& rhs)
+		{
+			lhs *= rhs;
+			return lhs;
+		}
+		friend SVarInt operator/(SVarInt lhs, const SVarInt& rhs)
+		{
+			lhs /= rhs;
+			return lhs;
+		}
+		friend SVarInt operator%(SVarInt lhs, const SVarInt& rhs)
+		{
+			lhs %= rhs;
+			return lhs;
+		}
+
+		pair<SVarInt, SVarInt> divrem(const SVarInt& rhs)
+		{
+			return UVarInt::divrem(rhs);
+		}
+		SVarInt  operator- () const
+		{
+			SVarInt temp(*this);
+			temp.negative = !negative;
+			return temp;
+		}
+		
+		// ====={ Indecr ops }=====
+		UVarInt& operator++()
+		{
+			if (operator==(-1))
+			{
+				negative = false;
+				decrement(1);
+			}
+			else if (negative)
+				return decrement(1);
+			else
+				return increment(1);
+		}
+		UVarInt  operator++(int)
+		{
+			UVarInt tmp(*this);
+			operator++();
+			return tmp;
+		}
+		UVarInt& operator--()
+		{
+			if (isnull())
+			{
+				negative = true;
+				return increment(1);
+			}
+			else if (negative)
+				return increment(1);
+			else
+				return decrement(1);
+		}
+		UVarInt  operator--(int)
+		{
+			UVarInt tmp(*this);
+			operator--();
+			return tmp;
+		}
+
+		// ====={ Other math }=====
+		SVarInt  pow(SVarInt n = 2) const
+		{
+			if (n.negative)
+				throw invalid_argument("Cannot calculate power with negative exponent!");
+			return SVarInt(UVarInt::pow(n), n.getbit(0) ? negative : 0);
+		}
+		SVarInt root(SVarInt n = 2) const
+		{
+			if (n.negative)
+				throw invalid_argument("Cannot calculate root with negative degree!");
+			if (negative && !n.getbit(0))
+				throw invalid_argument("Cannot calculate even root of negative number!");
+			return SVarInt(UVarInt::root(n), negative);
+		}
+		SVarInt log2() const
+		{
+			if (negative)
+				throw invalid_argument("Cannot calculate logarithm of negative number!");
+			return SVarInt(highestbit());
+		}
+
+
 		// ====={ Print num }=====
 		string hex(string sep = "\n") const
 		{
@@ -945,15 +1114,15 @@ int main()
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	UVarInt num(hex, 16);
+	SVarInt num(hex, 16, true);
 	//VarInt num(2);
 
-	UVarInt snd(2);
+	SVarInt snd(3);
 
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
 	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	UVarInt wyn = num.pow(7).root(13);
+	SVarInt wyn = num.pow(7).root(13);
 
 	cout << "Wyn:\n" << wyn.hex() << wyn.bin() << endl << endl;
 
