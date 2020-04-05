@@ -675,15 +675,15 @@ namespace Meth
 		{
 			return increment(1);
 		}
+		UVarInt& operator--()
+		{
+			return decrement(1);
+		}
 		UVarInt  operator++(int)
 		{
 			UVarInt tmp(*this);
 			operator++();
 			return tmp;
-		}
-		UVarInt& operator--()
-		{
-			return decrement(1);
 		}
 		UVarInt  operator--(int)
 		{
@@ -768,6 +768,44 @@ namespace Meth
 			return UVarInt(highestbit());
 		}
 
+		UVarInt gcd(UVarInt v)
+		{
+			auto t1 = chrono::high_resolution_clock::now();
+
+			if (isnull())
+				return v;
+			if (v.isnull())
+				return *this;
+			UVarInt u(*this);
+			size_t shift = 0;
+			while (!u.getbit(0) && !v.getbit(0))
+			{
+				++shift;
+				u >>= 1;
+				v >>= 1;
+			}
+			while (!u.getbit(0))
+				u >>= 1;
+			do
+			{
+				while (!v.getbit(0))
+					v >>= 1;
+				if (u > v)
+				{
+					UVarInt t = v;
+					v = u;
+					u = t;
+				}
+				v -= u;
+			} while (v != 0);
+
+			auto t2 = chrono::high_resolution_clock::now();
+			auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
+			cout << duration << "us" << endl;
+
+			return u << shift;
+		}
+
 		// ====={ Print num }=====
 		string hex(string sep = "\n") const
 		{
@@ -830,6 +868,13 @@ namespace Meth
 			UVarInt::nullify();
 			negative = false;
 			return *this;
+		}
+		int sign()
+		{
+			if (isnull())
+				return 0;
+			else
+				return 1 - 2 * negative;
 		}
 
 		// ====={ Bitwise ops }=====
@@ -1010,7 +1055,7 @@ namespace Meth
 		{
 			return UVarInt::divrem(rhs);
 		}
-		SVarInt  operator- () const
+		SVarInt  operator-() const
 		{
 			SVarInt temp(*this);
 			temp.negative = !negative;
@@ -1020,33 +1065,34 @@ namespace Meth
 		// ====={ Indecr ops }=====
 		UVarInt& operator++()
 		{
-			if (operator==(-1))
-			{
-				negative = false;
+			int sgn = sign();
+			if (sgn == -1)
 				decrement(1);
+			else // sgn == [0|1]
+				increment(1);
+			reduce();
+			return *this;
+		}
+		UVarInt& operator--()
+		{
+			int sgn = sign();
+			if (sgn == 0)
+			{
+				negative = true;
+				increment(1);
 			}
-			else if (negative)
-				return decrement(1);
-			else
-				return increment(1);
+			else if (sgn == -1)
+				increment(1);
+			else // if sgn == 1
+				decrement(1);
+			reduce();
+			return *this;
 		}
 		UVarInt  operator++(int)
 		{
 			UVarInt tmp(*this);
 			operator++();
 			return tmp;
-		}
-		UVarInt& operator--()
-		{
-			if (isnull())
-			{
-				negative = true;
-				return increment(1);
-			}
-			else if (negative)
-				return increment(1);
-			else
-				return decrement(1);
 		}
 		UVarInt  operator--(int)
 		{
@@ -1114,16 +1160,16 @@ int main()
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	SVarInt num(hex, 16, true);
-	//VarInt num(2);
+	//UVarInt num(hex, 16);
+	UVarInt num(720720);
 
-	SVarInt snd(3);
+	UVarInt snd(293318625600);
 
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
 	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	SVarInt wyn = num.pow(7).root(13);
+	UVarInt wyn = num.gcd(snd);
 
-	cout << "Wyn:\n" << wyn.hex() << wyn.bin() << endl << endl;
+	cout << "Wyn:\n" << wyn.dec() << wyn.bin() << endl << endl;
 
 }
