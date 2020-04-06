@@ -247,12 +247,16 @@ namespace Meth
 		size_t highestbit() const
 		{
 			size_t r = 0;
-			if (value.size() == 0)
-				return 0;
+			if (isnull())
+				return -1;
 			ull temp = value.back();
-			while (temp >>= 1)
+			ull mask = ull(1) << (unitbits - 1);
+			while (!(temp & mask))
+			{
 				++r;
-			return unitbits * (value.size() - 1) + r;
+				temp <<= 1;
+			}
+			return unitbits * value.size() - r - 1;
 		}
 		size_t  lowestbit() const
 		{
@@ -267,9 +271,12 @@ namespace Meth
 			}
 			size_t r = 0;
 			ull temp = value.at(el);
-			while (temp <<= 1)
+			while (!(temp & 1))
+			{
 				++r;
-			return unitbits * (el+1) - r-1;
+				temp >>= 1;
+			}
+			return unitbits * el + r;
 		}
 		bool getbit(size_t pos) const
 		{
@@ -551,25 +558,37 @@ namespace Meth
 			{
 				UVarInt multiplicand;
 				UVarInt multiplier;
-				if (operator>=(rhs))
+				size_t lhshigbit = highestbit();
+				size_t lhslowbit = lowestbit();
+				size_t rhshigbit = rhs.highestbit();
+				size_t rhslowbit = rhs.lowestbit();
+				size_t mpdhigbit, mprhigbit, mprlowbit;
+				if (lhshigbit - lhslowbit >= rhshigbit - rhslowbit)
 				{
 					multiplicand = *this;
 					multiplier = rhs;
+					mpdhigbit = lhshigbit; mprhigbit = rhshigbit; mprlowbit = rhslowbit;
 				}
 				else
 				{
 					multiplicand = rhs;
 					multiplier = *this;
+					mpdhigbit = rhshigbit; mprhigbit = lhshigbit; mprlowbit = lhslowbit;
 				}
+				multiplier >>= mprlowbit;
+				multiplicand <<= mprlowbit;
+				mpdhigbit += mprlowbit; mprhigbit -= mprlowbit; mprlowbit = 0;
+
 				nullify();
-				value.resize((multiplier.highestbit() + multiplicand.highestbit() - 1) / unitbits + 1);
-				size_t highbit = multiplier.highestbit();
-				for (size_t b = 0; b <= highbit; ++b)
+				value.resize((mprhigbit + mpdhigbit - 1) / unitbits + 1);
+				
+				for (size_t b = 0; b < mprhigbit; ++b)
 				{
 					if (multiplier.getbit(b))
 						operator+=(multiplicand);
 					multiplicand <<= 1;
 				}
+				operator+=(multiplicand);
 //				reduce();
 			}
 			return *this;
@@ -607,7 +626,7 @@ namespace Meth
 			while (operator>=(rhs))
 			{
 				if (operator>=(divisor))
-					*this -= divisor;
+					operator-=(divisor);
 				divisor >>= 1;
 			}
 			return *this;
@@ -776,20 +795,14 @@ namespace Meth
 				return v;
 			if (v.isnull())
 				return *this;
+
 			UVarInt u(*this);
-			size_t shift = 0;
-			while (!u.getbit(0) && !v.getbit(0))
-			{
-				++shift;
-				u >>= 1;
-				v >>= 1;
-			}
-			while (!u.getbit(0))
-				u >>= 1;
+			size_t shift = min(u.lowestbit(), v.lowestbit());
+			v >>= shift;
+			u >>= u.lowestbit();
 			do
 			{
-				while (!v.getbit(0))
-					v >>= 1;
+				v >>= v.lowestbit();
 				if (u > v)
 				{
 					UVarInt t = v;
@@ -797,7 +810,8 @@ namespace Meth
 					u = t;
 				}
 				v -= u;
-			} while (v != 0);
+			}
+			while (!v.isnull());
 
 			auto t2 = chrono::high_resolution_clock::now();
 			auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
@@ -1160,16 +1174,15 @@ int main()
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	//UVarInt num(hex, 16);
-	UVarInt num(720720);
+	UVarInt num(hex, 16);
+	//UVarInt num(720720); // 
 
 	UVarInt snd(293318625600);
 
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
 	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	UVarInt wyn = num.gcd(snd);
-
+	UVarInt wyn = num.pow(7).root(13);
 	cout << "Wyn:\n" << wyn.dec() << wyn.bin() << endl << endl;
 
 }
