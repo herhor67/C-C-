@@ -23,7 +23,7 @@ T gvoe(const vector<T>& vec, size_t pos)
 	return vec[pos];
 }
 
-vector<string> str_split_backward(const string & str, size_t split)
+vector<string> str_split_backward(const string& str, size_t split)
 {
 	vector<string> out;
 	out.reserve(str.length() / split + (str.length() % split) ? 1 : 0);
@@ -35,7 +35,7 @@ vector<string> str_split_backward(const string & str, size_t split)
 		out.push_back(str.substr(i, split));
 	return out;
 }
-vector<string> str_split(const string & str, size_t split)
+vector<string> str_split(const string& str, size_t split)
 {
 	vector<string> out;
 	out.reserve(str.length() / split + (str.length() % split) ? 1 : 0);
@@ -43,7 +43,7 @@ vector<string> str_split(const string & str, size_t split)
 		out.push_back(str.substr(i, split));
 	return out;
 }
-vector<char>   str_explode(const string & str)
+vector<char>   str_explode(const string& str)
 {
 	vector<char> out;
 	out.reserve(str.length());
@@ -131,13 +131,13 @@ namespace Meth
 	public:
 		// ====={ Constructors }=====
 		UVarInt() {}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type* = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
 		UVarInt(Integral num)
 		{
 			if (num)
 				value.push_back(num);
 		}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value&& is_signed<Integral>::value, Integral>::type* = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && is_signed<Integral>::value, Integral>::type * = nullptr>
 		UVarInt(Integral num)
 		{
 			if (num)
@@ -172,6 +172,10 @@ namespace Meth
 			}
 			reduce();
 		}
+//		UVarInt(SVarInt num)
+//		{
+//			value = num.value;
+//		}
 
 		// ====={ Operational }=====
 		UVarInt& reduce()
@@ -224,7 +228,7 @@ namespace Meth
 			{
 				if (pos >= value.size())
 					throw invalid_argument("Cannot subtract from null!");
-				
+
 				bool a = value.at(pos) >> (unitbits - 1);
 				bool b = decr >> (unitbits - 1);
 				value.at(pos) -= decr;
@@ -234,7 +238,7 @@ namespace Meth
 			} while (decr != 0);
 			return *this;
 		}
-	
+
 		/*VarInt twoscompl(size_t padTo = 0) const
 		{
 			VarInt temp(~*this);
@@ -521,7 +525,8 @@ namespace Meth
 			if (isnull() == 1)
 				value = rhs.value;
 			else if (rhs.isnull() == 1)
-				{}
+			{
+			}
 			else
 				for (size_t i = 0; i < rhs.value.size(); ++i)
 					increment(gvoe(rhs.value, i), i);
@@ -581,7 +586,7 @@ namespace Meth
 
 				nullify();
 				value.resize((mprhigbit + mpdhigbit - 1) / unitbits + 1);
-				
+
 				for (size_t b = 0; b < mprhigbit; ++b)
 				{
 					if (multiplier.getbit(b))
@@ -589,7 +594,7 @@ namespace Meth
 					multiplicand <<= 1;
 				}
 				operator+=(multiplicand);
-//				reduce();
+				//				reduce();
 			}
 			return *this;
 		}
@@ -779,7 +784,7 @@ namespace Meth
 			}
 			auto t2 = chrono::high_resolution_clock::now();
 			auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
-			cout << duration/1000 << "ms" << endl;
+			cout << duration / 1000 << "ms" << endl;
 			return ans;
 		}
 		UVarInt log2() const
@@ -810,8 +815,7 @@ namespace Meth
 					u = t;
 				}
 				v -= u;
-			}
-			while (!v.isnull());
+			} while (!v.isnull());
 
 			auto t2 = chrono::high_resolution_clock::now();
 			auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
@@ -851,11 +855,11 @@ namespace Meth
 	public:
 		// ====={ Constructors }=====
 		SVarInt() {}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type* = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
 		SVarInt(Integral num) : UVarInt(num)
 		{
 		}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value &&  is_signed<Integral>::value, Integral>::type* = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && is_signed<Integral>::value, Integral>::type * = nullptr>
 		SVarInt(Integral num) : UVarInt(num)
 		{
 			negative = (num < 0);
@@ -1075,7 +1079,7 @@ namespace Meth
 			temp.negative = !negative;
 			return temp;
 		}
-		
+
 		// ====={ Indecr ops }=====
 		UVarInt& operator++()
 		{
@@ -1130,11 +1134,16 @@ namespace Meth
 				throw invalid_argument("Cannot calculate even root of negative number!");
 			return SVarInt(UVarInt::root(n), negative);
 		}
-		SVarInt log2() const
+		UVarInt log2() const
 		{
 			if (negative)
 				throw invalid_argument("Cannot calculate logarithm of negative number!");
-			return SVarInt(highestbit());
+			return UVarInt::log2();
+		}
+
+		UVarInt abs()
+		{
+			return *this;
 		}
 
 
@@ -1174,15 +1183,15 @@ int main()
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	UVarInt num(hex, 16);
+	SVarInt num(hex, 16);
 	//UVarInt num(720720); // 
 
-	UVarInt snd(293318625600);
+	SVarInt snd(-293318625600);
 
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
 	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	UVarInt wyn = num.pow(7).root(13);
+	SVarInt wyn = snd.pow(3);
 	cout << "Wyn:\n" << wyn.dec() << wyn.bin() << endl << endl;
 
 }
