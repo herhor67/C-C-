@@ -126,9 +126,8 @@ namespace Meth
 {
 	class UVarInt
 	{
-	protected:
-		vector<ull> value;
 	public:
+		vector<ull> value;
 		// ====={ Constructors }=====
 		UVarInt() {}
 		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
@@ -608,6 +607,9 @@ namespace Meth
 			{
 				UVarInt divident(*this);
 				UVarInt divisor(rhs);
+				size_t shift = min(divident.lowestbit(), divisor.lowestbit());
+				divident >>= shift;
+				divisor  >>= shift;
 				UVarInt divisorshftd = divisor << (divident.highestbit() - divisor.highestbit());
 				nullify();
 				while (divisorshftd >= divisor)
@@ -794,8 +796,6 @@ namespace Meth
 
 		UVarInt gcd(UVarInt v)
 		{
-			auto t1 = chrono::high_resolution_clock::now();
-
 			if (isnull())
 				return v;
 			if (v.isnull())
@@ -810,17 +810,13 @@ namespace Meth
 				v >>= v.lowestbit();
 				if (u > v)
 				{
-					UVarInt t = v;
+					UVarInt t(v);
 					v = u;
 					u = t;
 				}
 				v -= u;
-			} while (!v.isnull());
-
-			auto t2 = chrono::high_resolution_clock::now();
-			auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
-			cout << duration << "us" << endl;
-
+			}
+			while (!v.isnull());
 			return u << shift;
 		}
 
@@ -850,9 +846,8 @@ namespace Meth
 
 	class SVarInt : UVarInt
 	{
-	protected:
-		bool negative = false;
 	public:
+		bool negative = false;
 		// ====={ Constructors }=====
 		SVarInt() {}
 		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
@@ -1162,17 +1157,41 @@ namespace Meth
 		}
 	};
 
-
-	/*class Frac
+	class Fraction
 	{
-	private:
-		map<ull, ull> factors;
+	protected:
+		bool negative = false;
+		UVarInt nominator   = 0;
+		UVarInt denominator = 1;
 	public:
-		Meth(ull nom, ull den = 1)
+		Fraction()
+		{}
+		Fraction(SVarInt nom)
 		{
-
+			nominator = nom.abs();
+			negative  = nom.negative;
 		}
-	};*/
+		Fraction(SVarInt nom, SVarInt den)
+		{
+			nominator   = nom.abs();
+			denominator = nom.abs();
+			negative    = (nom.negative != den.negative);
+		}
+
+		// ====={ Print num }=====
+		string hex(string sep = "\n") const
+		{
+			return string(negative ? "-" : "+") + nominator.hex(sep) + "----------------" + sep + denominator.hex(sep);
+		}
+		string dec(string sep = "\n") const
+		{
+			return string(negative ? "-" : "+") + nominator.dec(sep) + "--------------------" + sep + denominator.dec(sep);
+		}
+		string bin(string sep = "\n") const
+		{
+			return string(negative ? "-" : "+") + nominator.bin(sep) + "----------------------------------------------------------------" + sep + denominator.bin(sep);
+		}
+	};
 }
 
 using namespace Meth;
@@ -1186,12 +1205,14 @@ int main()
 	SVarInt num(hex, 16);
 	//UVarInt num(720720); // 
 
-	SVarInt snd(-293318625600);
+	SVarInt snd(293318625600);
+
 
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
 	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	SVarInt wyn = snd.pow(3);
-	cout << "Wyn:\n" << wyn.dec() << wyn.bin() << endl << endl;
+	Fraction wyn(num, snd);
+
+	cout << "W:\n" << wyn.hex() << wyn.bin() << endl << endl;
 
 }
