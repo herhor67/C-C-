@@ -171,10 +171,6 @@ namespace Meth
 			}
 			reduce();
 		}
-//		UVarInt(SVarInt num)
-//		{
-//			value = num.value;
-//		}
 
 		// ====={ Operational }=====
 		UVarInt& reduce()
@@ -306,33 +302,47 @@ namespace Meth
 		{
 			if (rhs && value.size())
 			{
-				size_t lshift = rhs % unitbits;
 				size_t append = rhs / unitbits;
-				unsigned r = 0;
-				ull temp = value.back();
-				while (temp >>= 1)
-					++r;
+				size_t lshift = rhs % unitbits;
 				size_t old = value.size() + append;
-				value.resize(old + 1 + (lshift >= unitbits - r));
-				for (size_t i = value.size(); i > 0; --i)
-				{
-					size_t p1 = i - 1;
-					size_t p2 = i - 2;
-					value.at(p1) = ((p1 <= old && p1 >= append) ? value.at(p1 - append) << lshift : 0) | ((p2 <= old && p2 >= append) ? value.at(p2 - append) >> (unitbits - lshift) : 0);
-				}
+				value.resize(value.size() + append + !!lshift);
+				if (lshift)
+					for (size_t i = value.size(); i > 0; --i)
+					{
+						size_t p1 = i - 1;
+						size_t p2 = i - 2;
+						value.at(p1) = ((p1 <= old && p1 >= append) ? value.at(p1 - append) << lshift : 0) | ((p2 <= old && p2 >= append) ? value.at(p2 - append) >> (unitbits - lshift) : 0);
+					}
+				else
+					for (size_t i = value.size() - 1; i > 0; --i)
+						value.at(i) = gvoe(value, i - append);
 				reduce();
 			}
 			return *this;
 		}
 		UVarInt& operator>>=(size_t rhs)
 		{
-			if (rhs)
+			if (rhs && !isnull())
 			{
-				size_t remove = rhs / unitbits;
-				size_t rshift = rhs % unitbits;
-				for (size_t i = 0; i < value.size(); ++i)
-					value.at(i) = (gvoe(value, i + remove) >> rshift) | (rshift ? (gvoe(value, i + 1 + remove) << (unitbits - rshift)) : 0);
-				reduce();
+				size_t higbit = highestbit();
+				if (higbit < rhs)
+					nullify();
+				else
+				{
+					size_t remove = rhs / unitbits;
+					size_t rshift = rhs % unitbits;
+					size_t newsize = value.size() - remove - (rshift > higbit% unitbits);
+					if (rshift == 0)
+						for (size_t i = 0; i < newsize; ++i)
+							value.at(i) = value.at(i + remove);
+						//	value.at(i) = gvoe(value, i + remove);
+					else
+						for (size_t i = 0; i < newsize; ++i)
+							value.at(i) = value.at(i + remove) >> rshift | gvoe(value, i + remove + 1) << (unitbits - rshift);
+						//	value.at(i) = gvoe(value, i + remove) >> rshift | gvoe(value, i + 1 + remove) << (unitbits - rshift);
+					value.resize(newsize);
+					
+				}
 			}
 			return *this;
 		}
@@ -796,14 +806,19 @@ namespace Meth
 
 		UVarInt gcd(UVarInt v)
 		{
+			cout << "Debug 1" << endl;
+			if (operator==(v))
+				return v;
 			if (isnull())
 				return v;
 			if (v.isnull())
 				return *this;
-
+			cout << "Debug 2" << endl;
 			UVarInt u(*this);
 			size_t shift = min(u.lowestbit(), v.lowestbit());
 			v >>= shift;
+			cout << "Shift: " << shift << endl;
+			cout << "Lowest: " << u.lowestbit() << endl;
 			u >>= u.lowestbit();
 			do
 			{
@@ -892,7 +907,7 @@ namespace Meth
 
 		// ====={ Bitwise ops }=====
 
-				// ====={ Comparison ops }=====
+		// ====={ Comparison ops }=====
 		bool operator> (const SVarInt& rhs) const
 		{
 			if (negative)
@@ -1159,37 +1174,81 @@ namespace Meth
 
 	class Fraction
 	{
-	protected:
-		bool negative = false;
-		UVarInt nominator   = 0;
-		UVarInt denominator = 1;
 	public:
+		bool negative = false;
+		UVarInt numerator = 0;
+		UVarInt denominator = 1;
+		// ====={ Constructors }=====
 		Fraction()
 		{}
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
+		Fraction(Integral num)
+		{
+			numerator = num;
+		}
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && is_signed<Integral>::value, Integral>::type * = nullptr>
+		Fraction(Integral num) : UVarInt(num)
+		{
+			numerator = num;
+			negative = (num < 0);
+		}
 		Fraction(SVarInt nom)
 		{
-			nominator = nom.abs();
+			numerator = nom.abs();
 			negative  = nom.negative;
 		}
 		Fraction(SVarInt nom, SVarInt den)
 		{
-			nominator   = nom.abs();
+			numerator   = nom.abs();
 			denominator = nom.abs();
 			negative    = (nom.negative != den.negative);
+			reduce();
+		}
+
+		// ====={ Operational }=====
+		Fraction& reduce()
+		{
+			numerator.reduce();
+			denominator.reduce();
+			UVarInt gcd = numerator.gcd(denominator);
+			cout << "GCD:\n" << gcd.hex() << gcd.bin() << endl;
+			numerator /= gcd;
+			denominator /= gcd;
+			if (isnull())
+				negative = false;
+			return *this;
+		}
+		Fraction& nullify()
+		{
+			numerator.nullify();
+			denominator = 1;
+			negative = false;
+			return *this;
+		}
+		int     sign()
+		{
+			if (isnull())
+				return 0;
+			else
+				return 1 - 2 * negative;
+		}
+		bool    isnull() const
+		{
+			return numerator.isnull();
 		}
 
 		// ====={ Print num }=====
 		string hex(string sep = "\n") const
 		{
-			return string(negative ? "-" : "+") + nominator.hex(sep) + "----------------" + sep + denominator.hex(sep);
+			return string(negative ? "-" : "+") + numerator.hex(sep) + "----------------" + sep + denominator.hex(sep);
 		}
 		string dec(string sep = "\n") const
 		{
-			return string(negative ? "-" : "+") + nominator.dec(sep) + "--------------------" + sep + denominator.dec(sep);
+			return string(negative ? "-" : "+") + numerator.dec(sep) + "--------------------" + sep + denominator.dec(sep);
 		}
 		string bin(string sep = "\n") const
 		{
-			return string(negative ? "-" : "+") + nominator.bin(sep) + "----------------------------------------------------------------" + sep + denominator.bin(sep);
+			return string(negative ? "-" : "+") + numerator.bin(sep) + "----------------------------------------------------------------" + sep + denominator.bin(sep);
 		}
 	};
 }
@@ -1202,16 +1261,17 @@ int main()
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	SVarInt num(hex, 16);
-	//UVarInt num(720720); // 
+	UVarInt num(hex, 16);
+	//UVarInt num(1024);
+	UVarInt snd(20);
 
-	SVarInt snd(293318625600);
 
 
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
-	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
+	//cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	Fraction wyn(num, snd);
+	UVarInt wyn = num >> 58;//= num.gcd(snd);
+	//Fraction wyn(num, snd);
 
 	cout << "W:\n" << wyn.hex() << wyn.bin() << endl << endl;
 
