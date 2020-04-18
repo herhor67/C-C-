@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <climits>
 #include <cstdlib>
 #include <iostream>
 #include <map>
@@ -12,8 +13,14 @@ using namespace std;
 
 typedef unsigned long long ull;
 typedef long long sll;
-constexpr unsigned unitbyte = sizeof(ull);
-constexpr unsigned unitbits = 8 * unitbyte;
+constexpr size_t unitbyte = sizeof(ull);
+constexpr size_t unitbits = CHAR_BIT * unitbyte;
+
+template<typename Integral, typename enable_if<is_integral<Integral>::value, Integral>::type * = nullptr>
+Integral ceildiv(Integral x, Integral y)
+{
+	return x / y + (x % y != 0);
+}
 
 template <typename T>
 T gvoe(const vector<T>& vec, size_t pos)
@@ -130,13 +137,13 @@ namespace Meth
 		vector<ull> value;
 		// ====={ Constructors }=====
 		UVarInt() {}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
 		UVarInt(Integral num)
 		{
 			if (num)
 				value.push_back(num);
 		}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && is_signed<Integral>::value, Integral>::type * = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value &&  is_signed<Integral>::value, Integral>::type * = nullptr>
 		UVarInt(Integral num)
 		{
 			if (num)
@@ -192,6 +199,13 @@ namespace Meth
 			return !static_cast<bool>(value.size());
 		}
 
+		ull gvoe(size_t pos) const
+		{
+			if (pos >= value.size())
+				return 0;
+			return value.at(pos);
+		}
+
 		bool operator!() const
 		{
 			return !static_cast<bool>(value.size());
@@ -234,15 +248,6 @@ namespace Meth
 			return *this;
 		}
 
-		/*VarInt twoscompl(size_t padTo = 0) const
-		{
-			VarInt temp(~*this);
-			temp.increment(1, 0);
-			for (size_t i = temp.value.size(); i < padTo; ++i)
-				temp.value.push_back(~0);
-			return temp;
-		}*/
-
 		size_t highestbit() const
 		{
 			size_t r = 0;
@@ -277,6 +282,7 @@ namespace Meth
 			}
 			return unitbits * el + r;
 		}
+
 		bool getbit(size_t pos) const
 		{
 			size_t el = pos / unitbits;
@@ -300,23 +306,20 @@ namespace Meth
 
 		UVarInt& operator<<=(size_t rhs)
 		{
-			if (rhs && value.size())
+			if (rhs && !isnull())
 			{
+				size_t higbit = highestbit();
 				size_t append = rhs / unitbits;
 				size_t lshift = rhs % unitbits;
-				size_t old = value.size() + append;
-				value.resize(value.size() + append + !!lshift);
-				if (lshift)
-					for (size_t i = value.size(); i > 0; --i)
-					{
-						size_t p1 = i - 1;
-						size_t p2 = i - 2;
-						value.at(p1) = ((p1 <= old && p1 >= append) ? value.at(p1 - append) << lshift : 0) | ((p2 <= old && p2 >= append) ? value.at(p2 - append) >> (unitbits - lshift) : 0);
-					}
+				size_t old = value.size();
+				size_t higbyte = ceildiv(higbit + 1 + rhs, unitbits) - 1;
+				value.resize(higbyte + 1);
+				if (lshift == 0)
+					for (size_t i = higbyte; i + 1 > 0; --i)
+						value.at(i) = gvoe(i - append);
 				else
-					for (size_t i = value.size() - 1; i > 0; --i)
-						value.at(i) = gvoe(value, i - append);
-				reduce();
+					for (size_t i = higbyte; i + 1 > 0; --i)
+						value.at(i) = gvoe(i - append) << lshift | gvoe(i - 1 - append) >> (unitbits - lshift);
 			}
 			return *this;
 		}
@@ -325,23 +328,20 @@ namespace Meth
 			if (rhs && !isnull())
 			{
 				size_t higbit = highestbit();
-				if (higbit < rhs)
+				if (rhs > higbit)
 					nullify();
 				else
 				{
 					size_t remove = rhs / unitbits;
 					size_t rshift = rhs % unitbits;
-					size_t newsize = value.size() - remove - (rshift > higbit% unitbits);
+					size_t higbyte = ceildiv(higbit + 1 - rhs, unitbits) - 1;
 					if (rshift == 0)
-						for (size_t i = 0; i < newsize; ++i)
-							value.at(i) = value.at(i + remove);
-						//	value.at(i) = gvoe(value, i + remove);
+						for (size_t i = 0; i <= higbyte; ++i)
+							value.at(i) = gvoe(i + remove);
 					else
-						for (size_t i = 0; i < newsize; ++i)
-							value.at(i) = value.at(i + remove) >> rshift | gvoe(value, i + remove + 1) << (unitbits - rshift);
-						//	value.at(i) = gvoe(value, i + remove) >> rshift | gvoe(value, i + 1 + remove) << (unitbits - rshift);
-					value.resize(newsize);
-					
+						for (size_t i = 0; i <= higbyte; ++i)
+							value.at(i) = gvoe(i + remove) >> rshift | gvoe(i + remove + 1) << (unitbits - rshift);
+					value.resize(higbyte + 1);
 				}
 			}
 			return *this;
@@ -452,9 +452,9 @@ namespace Meth
 			size_t maxize = max(value.size(), rhs.value.size());
 			for (size_t i = maxize; i > 0; --i)
 			{
-				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) > gvoe(i - 1))
 					return true;
-				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) < gvoe(i - 1))
 					return false;
 			}
 			return false;
@@ -464,9 +464,9 @@ namespace Meth
 			size_t maxize = max(value.size(), rhs.value.size());
 			for (size_t i = maxize; i > 0; --i)
 			{
-				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) > gvoe(i - 1))
 					return true;
-				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) < gvoe(i - 1))
 					return false;
 			}
 			return true;
@@ -476,9 +476,9 @@ namespace Meth
 			size_t maxize = max(value.size(), rhs.value.size());
 			for (size_t i = maxize; i > 0; --i)
 			{
-				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) < rhs.gvoe(i - 1))
 					return true;
-				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) > rhs.gvoe(i - 1))
 					return false;
 			}
 			return false;
@@ -488,9 +488,9 @@ namespace Meth
 			size_t maxize = max(value.size(), rhs.value.size());
 			for (size_t i = maxize; i > 0; --i)
 			{
-				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) < rhs.gvoe(i - 1))
 					return true;
-				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) > rhs.gvoe(i - 1))
 					return false;
 			}
 			return true;
@@ -500,7 +500,7 @@ namespace Meth
 			size_t maxize = max(value.size(), rhs.value.size());
 			for (size_t i = maxize; i > 0; --i)
 			{
-				if (gvoe(value, i - 1) != gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) != rhs.gvoe(i - 1))
 					return false;
 			}
 			return true;
@@ -510,7 +510,7 @@ namespace Meth
 			size_t maxize = max(value.size(), rhs.value.size());
 			for (size_t i = maxize; i > 0; --i)
 			{
-				if (gvoe(value, i - 1) != gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) != rhs.gvoe(i - 1))
 					return true;
 			}
 			return false;
@@ -520,9 +520,9 @@ namespace Meth
 			size_t maxize = max(value.size(), rhs.value.size());
 			for (size_t i = maxize; i > 0; --i)
 			{
-				if (gvoe(value, i - 1) > gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) > rhs.gvoe(i - 1))
 					return 1;
-				if (gvoe(value, i - 1) < gvoe(rhs.value, i - 1))
+				if (gvoe(i - 1) < rhs.gvoe(i - 1))
 					return -1;
 			}
 			return 0;
@@ -538,7 +538,7 @@ namespace Meth
 			}
 			else
 				for (size_t i = 0; i < rhs.value.size(); ++i)
-					increment(gvoe(rhs.value, i), i);
+					increment(rhs.gvoe(i), i);
 			reduce();
 			return *this;
 		}
@@ -549,13 +549,13 @@ namespace Meth
 				nullify();
 			else if (ltgtoe > 0)
 				for (size_t i = 0; i < rhs.value.size(); ++i)
-					decrement(gvoe(rhs.value, i), i);
+					decrement(rhs.gvoe(i), i);
 			else if (ltgtoe < 0)
 			{
 				UVarInt subtrahend(*this);
 				value = rhs.value;
 				for (size_t i = 0; i < subtrahend.value.size(); ++i)
-					decrement(gvoe(subtrahend.value, i), i);
+					decrement(subtrahend.gvoe(i), i);
 			}
 			reduce();
 			return *this;
@@ -567,7 +567,8 @@ namespace Meth
 			else if (operator==(1))
 				value = rhs.value;
 			else if (rhs.operator==(1))
-			{}
+			{
+			}
 			else
 			{
 				UVarInt multiplicand;
@@ -619,7 +620,7 @@ namespace Meth
 				UVarInt divisor(rhs);
 				size_t shift = min(divident.lowestbit(), divisor.lowestbit());
 				divident >>= shift;
-				divisor  >>= shift;
+				divisor >>= shift;
 				UVarInt divisorshftd = divisor << (divident.highestbit() - divisor.highestbit());
 				nullify();
 				while (divisorshftd >= divisor)
@@ -830,8 +831,7 @@ namespace Meth
 					u = t;
 				}
 				v -= u;
-			}
-			while (!v.isnull());
+			} while (!v.isnull());
 			return u << shift;
 		}
 
@@ -1195,13 +1195,13 @@ namespace Meth
 		Fraction(SVarInt nom)
 		{
 			numerator = nom.abs();
-			negative  = nom.negative;
+			negative = nom.negative;
 		}
 		Fraction(SVarInt nom, SVarInt den)
 		{
-			numerator   = nom.abs();
+			numerator = nom.abs();
 			denominator = nom.abs();
-			negative    = (nom.negative != den.negative);
+			negative = (nom.negative != den.negative);
 			reduce();
 		}
 
@@ -1270,7 +1270,7 @@ int main()
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
 	//cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	UVarInt wyn = num >> 58;//= num.gcd(snd);
+	UVarInt wyn = num << 64;//= num.gcd(snd);
 	//Fraction wyn(num, snd);
 
 	cout << "W:\n" << wyn.hex() << wyn.bin() << endl << endl;
