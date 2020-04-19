@@ -395,23 +395,23 @@ namespace Meth
 				if (value.size() > rhs.value.size())
 					value.resize(rhs.value.size());
 				for (size_t i = 0; i < value.size(); ++i)
-					value.at(i) &= rhs.value.at(i);
+					value.at(i) &= rhs.gvoe(i);
 				reduce();
 			}
 			return *this;
 		}
 		UVarInt& operator|=(const UVarInt& rhs)
 		{
-			if (isnull() == 1)
+			if (isnull())
 				value = rhs.value;
-			else if (rhs.isnull() == 1) {}
+			else if (rhs.isnull()) {}
 			else
 			{
 				if (value.size() < rhs.value.size())
 					value.resize(rhs.value.size());
 				for (size_t i = 0; i < value.size(); ++i)
-					value.at(i) |= rhs.value.at(i);
-				reduce();
+					value.at(i) |= rhs.gvoe(i);
+//				reduce();
 			}
 			return *this;
 		}
@@ -452,9 +452,9 @@ namespace Meth
 			size_t maxize = max(value.size(), rhs.value.size());
 			for (size_t i = maxize; i > 0; --i)
 			{
-				if (gvoe(i - 1) > gvoe(i - 1))
+				if (gvoe(i - 1) > rhs.gvoe(i - 1))
 					return true;
-				if (gvoe(i - 1) < gvoe(i - 1))
+				if (gvoe(i - 1) < rhs.gvoe(i - 1))
 					return false;
 			}
 			return false;
@@ -464,9 +464,9 @@ namespace Meth
 			size_t maxize = max(value.size(), rhs.value.size());
 			for (size_t i = maxize; i > 0; --i)
 			{
-				if (gvoe(i - 1) > gvoe(i - 1))
+				if (gvoe(i - 1) > rhs.gvoe(i - 1))
 					return true;
-				if (gvoe(i - 1) < gvoe(i - 1))
+				if (gvoe(i - 1) < rhs.gvoe(i - 1))
 					return false;
 			}
 			return true;
@@ -807,19 +807,13 @@ namespace Meth
 
 		UVarInt gcd(UVarInt v)
 		{
-			cout << "Debug 1" << endl;
-			if (operator==(v))
-				return v;
-			if (isnull())
-				return v;
 			if (v.isnull())
 				return *this;
-			cout << "Debug 2" << endl;
+			if (isnull() || operator==(v))
+				return v;
 			UVarInt u(*this);
 			size_t shift = min(u.lowestbit(), v.lowestbit());
 			v >>= shift;
-			cout << "Shift: " << shift << endl;
-			cout << "Lowest: " << u.lowestbit() << endl;
 			u >>= u.lowestbit();
 			do
 			{
@@ -831,7 +825,8 @@ namespace Meth
 					u = t;
 				}
 				v -= u;
-			} while (!v.isnull());
+			}
+			while (!v.isnull());
 			return u << shift;
 		}
 
@@ -1186,7 +1181,7 @@ namespace Meth
 		{
 			numerator = num;
 		}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && is_signed<Integral>::value, Integral>::type * = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value &&  is_signed<Integral>::value, Integral>::type * = nullptr>
 		Fraction(Integral num) : UVarInt(num)
 		{
 			numerator = num;
@@ -1200,7 +1195,7 @@ namespace Meth
 		Fraction(SVarInt nom, SVarInt den)
 		{
 			numerator = nom.abs();
-			denominator = nom.abs();
+			denominator = den.abs();
 			negative = (nom.negative != den.negative);
 			reduce();
 		}
@@ -1211,7 +1206,6 @@ namespace Meth
 			numerator.reduce();
 			denominator.reduce();
 			UVarInt gcd = numerator.gcd(denominator);
-			cout << "GCD:\n" << gcd.hex() << gcd.bin() << endl;
 			numerator /= gcd;
 			denominator /= gcd;
 			if (isnull())
@@ -1262,17 +1256,32 @@ int main()
 	string bin = "0111010101011101010";
 
 	UVarInt num(hex, 16);
-	//UVarInt num(1024);
-	UVarInt snd(20);
+	//UVarInt num(1024102410241024);
+	UVarInt snd(134513456);
 
 
 
 	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
-	//cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
+	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
 
-	UVarInt wyn = num << 64;//= num.gcd(snd);
-	//Fraction wyn(num, snd);
+	//UVarInt wyn = num.pow(15).gcd(snd.pow(25));
+	Fraction wyn(num, snd);
 
-	cout << "W:\n" << wyn.hex() << wyn.bin() << endl << endl;
+	cout << "W:\n" << wyn.hex();// << wyn.bin() << endl << endl;
+
+
+
+	
 
 }
+
+
+/*
+
+	auto t1 = chrono::high_resolution_clock::now();
+
+	auto t2 = chrono::high_resolution_clock::now();
+	auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
+	cout << duration / 1000 << "ms" << endl;
+
+*/
