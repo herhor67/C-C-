@@ -1159,9 +1159,9 @@ namespace Meth
 				return -1;
 			else if (lsgn > rsgn)
 				return 1;
-
+			//else lsgn == rsgn
 			int numcmp = numerator.cmp(rhs.numerator);
-			int dencmp = rhs.denominator.cmp(denominator); // notice reversed order for speed
+			int dencmp = rhs.denominator.cmp(denominator); // notice reversed order for speed & simplicity
 			if (dencmp == 0)
 				return lsgn * numcmp;
 			if (numcmp == 0)
@@ -1173,7 +1173,49 @@ namespace Meth
 
 		// ====={ Math ops }=====
 
+		Fraction& operator*=(const Fraction& rhs)
+		{
+			UVarInt ndgcd = numerator.gcd(rhs.denominator);
+			numerator /= ndgcd;
+			denominator *= rhs.denominator / ndgcd;
+			ndgcd = denominator.gcd(rhs.numerator);
+			denominator /= ndgcd;
+			numerator *= rhs.numerator / ndgcd;
+			negative = (negative != rhs.negative);
+			return *this;
+		}
 
+
+
+		friend Fraction operator*(Fraction lhs, const Fraction& rhs)
+		{
+			lhs *= rhs;
+			return lhs;
+		}
+
+
+		Fraction  operator-() const
+		{
+			Fraction temp(*this);
+			temp.negative = !negative;
+			return temp;
+		}
+
+		// ====={ Other math }=====
+		Fraction abs()
+		{
+			Fraction temp(*this);
+			temp.negative = false;
+			return temp;
+		}
+		Fraction inv()
+		{
+			if (isnull())
+				throw new logic_error("Cannot inverse the Zero!");
+			Fraction temp(denominator, numerator);
+			temp.negative = negative;
+			return temp;
+		}
 
 		// ====={ Print num }=====
 		string hex(string sep = "\n") const
@@ -1207,23 +1249,17 @@ int main()
 	SVarInt snd(5);
 	SVarInt den(7);
 
-	Fraction A(3, 7);
-	Fraction B(13, 14);
+	Fraction A(12, 7);
+	Fraction B(21, 4);
 
-	cout << "A:\n" << A.hex("") << endl;// << A.bin() << endl << endl;
-	cout << "B:\n" << B.hex("") << endl;// << B.bin() << endl << endl;
-
-	//UVarInt wyn = num.pow(15).gcd(snd.pow(25));
-	//cout << "W:\n" << wyn.hex() << wyn.bin() << endl << endl;
+	cout << "A:\n" << A.hex() << endl;// << A.bin() << endl << endl;
+	cout << "B:\n" << B.hex() << endl;// << B.bin() << endl << endl;
 
 
-//	cout << "(A >  B) = " << (A >  B) << endl;
-//	cout << "(A >= B) = " << (A >= B) << endl;
-//	cout << "(A <  B) = " << (A <  B) << endl;
-//	cout << "(A <= B) = " << (A <= B) << endl;
-//	cout << "(A == B) = " << (A == B) << endl;
-//	cout << "(A != B) = " << (A != B) << endl;
-	cout << "A.cmp(B) = " << A.cmp(B) << endl;
+	Fraction wyn = A * B;
+
+	cout << "W:\n" << wyn.hex() << endl;// << wyn.bin() << endl << endl;
+
 
 
 
