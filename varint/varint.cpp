@@ -194,7 +194,7 @@ namespace Meth
 			value.clear();
 			return *this;
 		}
-		bool    isnull() const
+		bool isnull() const
 		{
 			return !static_cast<bool>(value.size());
 		}
@@ -449,71 +449,27 @@ namespace Meth
 		// ====={ Comparison ops }=====
 		bool operator> (const UVarInt& rhs) const
 		{
-			size_t maxize = max(value.size(), rhs.value.size());
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(i - 1) > rhs.gvoe(i - 1))
-					return true;
-				if (gvoe(i - 1) < rhs.gvoe(i - 1))
-					return false;
-			}
-			return false;
+			return cmp(rhs) > 0;
 		}
 		bool operator>=(const UVarInt& rhs) const
 		{
-			size_t maxize = max(value.size(), rhs.value.size());
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(i - 1) > rhs.gvoe(i - 1))
-					return true;
-				if (gvoe(i - 1) < rhs.gvoe(i - 1))
-					return false;
-			}
-			return true;
+			return cmp(rhs) >= 0;
 		}
 		bool operator< (const UVarInt& rhs) const
 		{
-			size_t maxize = max(value.size(), rhs.value.size());
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(i - 1) < rhs.gvoe(i - 1))
-					return true;
-				if (gvoe(i - 1) > rhs.gvoe(i - 1))
-					return false;
-			}
-			return false;
+			return cmp(rhs) < 0;
 		}
 		bool operator<=(const UVarInt& rhs) const
 		{
-			size_t maxize = max(value.size(), rhs.value.size());
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(i - 1) < rhs.gvoe(i - 1))
-					return true;
-				if (gvoe(i - 1) > rhs.gvoe(i - 1))
-					return false;
-			}
-			return true;
+			return cmp(rhs) <= 0;
 		}
 		bool operator==(const UVarInt& rhs) const
 		{
-			size_t maxize = max(value.size(), rhs.value.size());
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(i - 1) != rhs.gvoe(i - 1))
-					return false;
-			}
-			return true;
+			return cmp(rhs) == 0;
 		}
 		bool operator!=(const UVarInt& rhs) const
 		{
-			size_t maxize = max(value.size(), rhs.value.size());
-			for (size_t i = maxize; i > 0; --i)
-			{
-				if (gvoe(i - 1) != rhs.gvoe(i - 1))
-					return true;
-			}
-			return false;
+			return cmp(rhs) != 0;
 		}
 		int cmp(const UVarInt& rhs) const
 		{
@@ -850,17 +806,17 @@ namespace Meth
 		}
 	};
 
-	class SVarInt : UVarInt
+	class SVarInt : public UVarInt
 	{
 	public:
 		bool negative = false;
 		// ====={ Constructors }=====
 		SVarInt() {}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
 		SVarInt(Integral num) : UVarInt(num)
 		{
 		}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && is_signed<Integral>::value, Integral>::type * = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value &&  is_signed<Integral>::value, Integral>::type * = nullptr>
 		SVarInt(Integral num) : UVarInt(num)
 		{
 			negative = (num < 0);
@@ -888,12 +844,11 @@ namespace Meth
 			negative = false;
 			return *this;
 		}
-		int sign()
+		int  sign() const
 		{
 			if (isnull())
 				return 0;
-			else
-				return 1 - 2 * negative;
+			return 1 - 2 * negative;
 		}
 
 		// ====={ Bitwise ops }=====
@@ -901,85 +856,39 @@ namespace Meth
 		// ====={ Comparison ops }=====
 		bool operator> (const SVarInt& rhs) const
 		{
-			if (negative)
-			{
-				if (rhs.negative)
-					return UVarInt::operator<(rhs);
-				else
-					return false;
-			}
-			else
-			{
-				if (rhs.negative)
-					return true;
-				else
-					return UVarInt::operator>(rhs);
-			}
+			return cmp(rhs) > 0;
 		}
 		bool operator>=(const SVarInt& rhs) const
 		{
-			if (negative)
-			{
-				if (rhs.negative)
-					return UVarInt::operator<=(rhs);
-				else
-					return false;
-			}
-			else
-			{
-				if (rhs.negative)
-					return true;
-				else
-					return UVarInt::operator>=(rhs);
-			}
+			return cmp(rhs) >= 0;
 		}
 		bool operator< (const SVarInt& rhs) const
 		{
-			if (negative)
-			{
-				if (rhs.negative)
-					return UVarInt::operator>(rhs);
-				else
-					return true;
-			}
-			else
-			{
-				if (rhs.negative)
-					return false;
-				else
-					return UVarInt::operator<(rhs);
-			}
+			return cmp(rhs) < 0;
 		}
 		bool operator<=(const SVarInt& rhs) const
 		{
-			if (negative)
-			{
-				if (rhs.negative)
-					return UVarInt::operator>=(rhs);
-				else
-					return true;
-			}
-			else
-			{
-				if (rhs.negative)
-					return false;
-				else
-					return UVarInt::operator<=(rhs);
-			}
+			return cmp(rhs) <= 0;
 		}
 		bool operator==(const SVarInt& rhs) const
 		{
-			return negative == rhs.negative && UVarInt::operator==(rhs);
+			return cmp(rhs) == 0;
 		}
 		bool operator!=(const SVarInt& rhs) const
 		{
-			return negative != rhs.negative || UVarInt::operator!=(rhs);
+			return cmp(rhs) != 0;
 		}
 		int cmp(const SVarInt& rhs) const
 		{
-			if (negative != negative)
-				return 1 - 2 * negative;
-			return (1 - 2 * negative) * UVarInt::cmp(rhs);
+			int lsgn = sign();
+			int rsgn = rhs.sign();
+			if (lsgn == 0 && rsgn == 0)
+				return 0;
+			else if (lsgn < rsgn)
+				return -1;
+			else if (lsgn > rsgn)
+				return 1;
+			return sign() * UVarInt::cmp(rhs);
 		}
 
 		// ====={ Math ops }=====
@@ -1071,7 +980,7 @@ namespace Meth
 		}
 
 		// ====={ Indecr ops }=====
-		UVarInt& operator++()
+		SVarInt& operator++()
 		{
 			int sgn = sign();
 			if (sgn == -1)
@@ -1081,7 +990,7 @@ namespace Meth
 			reduce();
 			return *this;
 		}
-		UVarInt& operator--()
+		SVarInt& operator--()
 		{
 			int sgn = sign();
 			if (sgn == 0)
@@ -1096,13 +1005,13 @@ namespace Meth
 			reduce();
 			return *this;
 		}
-		UVarInt  operator++(int)
+		SVarInt  operator++(int)
 		{
 			UVarInt tmp(*this);
 			operator++();
 			return tmp;
 		}
-		UVarInt  operator--(int)
+		SVarInt  operator--(int)
 		{
 			UVarInt tmp(*this);
 			operator--();
@@ -1133,9 +1042,13 @@ namespace Meth
 
 		UVarInt abs()
 		{
-			return *this;
+			return static_cast<UVarInt>(*this);
 		}
 
+/*		UVarInt gcd(SVarInt rhs)
+		{
+			return UVarInt::gcd(rhs);
+		}*/
 
 		// ====={ Print num }=====
 		string hex(string sep = "\n") const
@@ -1155,17 +1068,18 @@ namespace Meth
 	class Fraction
 	{
 	public:
-		SVarInt numerator = 0;
+		UVarInt numerator = 0;
 		UVarInt denominator = 1;
+		bool negative = 0;
 		// ====={ Constructors }=====
 		Fraction()
 		{}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value &&  !is_signed<Integral>::value, Integral>::type * = nullptr>
 		Fraction(Integral num)
 		{
 			numerator = num;
 		}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value &&  is_signed<Integral>::value, Integral>::type * = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value &&   is_signed<Integral>::value, Integral>::type * = nullptr>
 		Fraction(Integral num)
 		{
 			numerator = num;
@@ -1179,7 +1093,7 @@ namespace Meth
 			numerator = num.abs();
 			denominator = den.abs();
 			if (num.negative != den.negative)
-				numerator.negative = true;;
+				negative = true;
 			reduce();
 		}
 
@@ -1191,27 +1105,23 @@ namespace Meth
 			UVarInt gcd = numerator.gcd(denominator);
 			numerator /= gcd;
 			denominator /= gcd;
-			if (isnull())
-				negative = false;
 			return *this;
 		}
 		Fraction& nullify()
 		{
 			numerator.nullify();
 			denominator = 1;
-			negative = false;
 			return *this;
 		}
-		int     sign()
+		bool isnull() const
+		{
+			return numerator.isnull();
+		}
+		int  sign() const
 		{
 			if (isnull())
 				return 0;
-			else
-				return 1 - 2 * negative;
-		}
-		bool    isnull() const
-		{
-			return numerator.isnull();
+			return 1 - 2 * negative;
 		}
 
 		// ====={ Comparison ops }=====
@@ -1223,7 +1133,6 @@ namespace Meth
 		{
 			return cmp(rhs) >= 0;
 		}
-
 		bool operator< (const Fraction& rhs) const
 		{
 			return cmp(rhs) < 0;
@@ -1242,7 +1151,24 @@ namespace Meth
 		}
 		int cmp(const Fraction& rhs) const
 		{
-			return (numerator * static_cast<SVarInt>(rhs.denominator)).cmp(rhs.numerator * static_cast<SVarInt>(denominator));
+			int lsgn = sign();
+			int rsgn = rhs.sign();
+			if (lsgn == 0 && rsgn == 0)
+				return 0;
+			else if (lsgn < rsgn)
+				return -1;
+			else if (lsgn > rsgn)
+				return 1;
+
+			int numcmp = numerator.cmp(rhs.numerator);
+			int dencmp = rhs.denominator.cmp(denominator); // notice reversed order for speed
+			if (dencmp == 0)
+				return lsgn * numcmp;
+			if (numcmp == 0)
+				return lsgn * dencmp;
+			if (numcmp == dencmp)
+				return lsgn * numcmp;
+			return lsgn * (numerator * rhs.denominator).cmp(rhs.numerator * denominator);
 		}
 
 		// ====={ Math ops }=====
@@ -1279,9 +1205,10 @@ int main()
 	//UVarInt num(hex, 16);
 	SVarInt num(3);
 	SVarInt snd(5);
+	SVarInt den(7);
 
-	Fraction A(snd, num);
-	Fraction B(num, snd);
+	Fraction A(3, 7);
+	Fraction B(13, 14);
 
 	cout << "A:\n" << A.hex("") << endl;// << A.bin() << endl << endl;
 	cout << "B:\n" << B.hex("") << endl;// << B.bin() << endl << endl;
@@ -1290,12 +1217,12 @@ int main()
 	//cout << "W:\n" << wyn.hex() << wyn.bin() << endl << endl;
 
 
-	cout << "(A >  B) = " << (A >  B) << endl;
-	cout << "(A >= B) = " << (A >= B) << endl;
-	cout << "(A <  B) = " << (A <  B) << endl;
-	cout << "(A <= B) = " << (A <= B) << endl;
-	cout << "(A == B) = " << (A == B) << endl;
-	cout << "(A != B) = " << (A != B) << endl;
+//	cout << "(A >  B) = " << (A >  B) << endl;
+//	cout << "(A >= B) = " << (A >= B) << endl;
+//	cout << "(A <  B) = " << (A <  B) << endl;
+//	cout << "(A <= B) = " << (A <= B) << endl;
+//	cout << "(A == B) = " << (A == B) << endl;
+//	cout << "(A != B) = " << (A != B) << endl;
 	cout << "A.cmp(B) = " << A.cmp(B) << endl;
 
 
