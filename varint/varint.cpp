@@ -819,11 +819,7 @@ namespace Meth
 			{
 				v >>= v.lowestbit();
 				if (u > v)
-				{
-					UVarInt t(v);
-					v = u;
-					u = t;
-				}
+					swap(u, v);
 				v -= u;
 			}
 			while (!v.isnull());
@@ -981,20 +977,9 @@ namespace Meth
 		}
 		int cmp(const SVarInt& rhs) const
 		{
-			if (negative)
-			{
-				if (rhs.negative)
-					return -UVarInt::cmp(rhs);
-				else
-					return -1;
-			}
-			else
-			{
-				if (rhs.negative)
-					return 1;
-				else
-					return UVarInt::cmp(rhs);
-			}
+			if (negative != negative)
+				return 1 - 2 * negative;
+			return (1 - 2 * negative) * UVarInt::cmp(rhs);
 		}
 
 		// ====={ Math ops }=====
@@ -1170,8 +1155,7 @@ namespace Meth
 	class Fraction
 	{
 	public:
-		bool negative = false;
-		UVarInt numerator = 0;
+		SVarInt numerator = 0;
 		UVarInt denominator = 1;
 		// ====={ Constructors }=====
 		Fraction()
@@ -1182,21 +1166,20 @@ namespace Meth
 			numerator = num;
 		}
 		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_same<Integral, bool>::value &&  is_signed<Integral>::value, Integral>::type * = nullptr>
-		Fraction(Integral num) : UVarInt(num)
+		Fraction(Integral num)
 		{
 			numerator = num;
-			negative = (num < 0);
 		}
-		Fraction(SVarInt nom)
+		Fraction(SVarInt num)
 		{
-			numerator = nom.abs();
-			negative = nom.negative;
+			numerator = num;
 		}
-		Fraction(SVarInt nom, SVarInt den)
+		Fraction(SVarInt num, SVarInt den)
 		{
-			numerator = nom.abs();
+			numerator = num.abs();
 			denominator = den.abs();
-			negative = (nom.negative != den.negative);
+			if (num.negative != den.negative)
+				numerator.negative = true;;
 			reduce();
 		}
 
@@ -1231,6 +1214,41 @@ namespace Meth
 			return numerator.isnull();
 		}
 
+		// ====={ Comparison ops }=====
+		bool operator> (const Fraction& rhs) const
+		{
+			return cmp(rhs) > 0;
+		}
+		bool operator>=(const Fraction& rhs) const
+		{
+			return cmp(rhs) >= 0;
+		}
+
+		bool operator< (const Fraction& rhs) const
+		{
+			return cmp(rhs) < 0;
+		}
+		bool operator<=(const Fraction& rhs) const
+		{
+			return cmp(rhs) <= 0;
+		}
+		bool operator==(const Fraction& rhs) const
+		{
+			return cmp(rhs) == 0;
+		}
+		bool operator!=(const Fraction& rhs) const
+		{
+			return cmp(rhs) != 0;
+		}
+		int cmp(const Fraction& rhs) const
+		{
+			return (numerator * static_cast<SVarInt>(rhs.denominator)).cmp(rhs.numerator * static_cast<SVarInt>(denominator));
+		}
+
+		// ====={ Math ops }=====
+
+
+
 		// ====={ Print num }=====
 		string hex(string sep = "\n") const
 		{
@@ -1251,27 +1269,40 @@ using namespace Meth;
 
 int main()
 {
+	auto t1 = chrono::high_resolution_clock::now();
+
+
 	string hex = "0123456789ABCDEFFEDCBA9876543210FFF2FDAFF3FFF9FC";
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	UVarInt num(hex, 16);
-	//UVarInt num(1024102410241024);
-	UVarInt snd(134513456);
+	//UVarInt num(hex, 16);
+	SVarInt num(3);
+	SVarInt snd(5);
 
+	Fraction A(snd, num);
+	Fraction B(num, snd);
 
-
-	cout << "A:\n" << num.hex() << num.bin() << endl << endl;
-	cout << "B:\n" << snd.hex() << snd.bin() << endl << endl;
+	cout << "A:\n" << A.hex("") << endl;// << A.bin() << endl << endl;
+	cout << "B:\n" << B.hex("") << endl;// << B.bin() << endl << endl;
 
 	//UVarInt wyn = num.pow(15).gcd(snd.pow(25));
-	Fraction wyn(num, snd);
-
-	cout << "W:\n" << wyn.hex();// << wyn.bin() << endl << endl;
+	//cout << "W:\n" << wyn.hex() << wyn.bin() << endl << endl;
 
 
+	cout << "(A >  B) = " << (A >  B) << endl;
+	cout << "(A >= B) = " << (A >= B) << endl;
+	cout << "(A <  B) = " << (A <  B) << endl;
+	cout << "(A <= B) = " << (A <= B) << endl;
+	cout << "(A == B) = " << (A == B) << endl;
+	cout << "(A != B) = " << (A != B) << endl;
+	cout << "A.cmp(B) = " << A.cmp(B) << endl;
 
-	
+
+
+	auto t2 = chrono::high_resolution_clock::now();
+	auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
+	cout << endl << duration << "us" << endl;
 
 }
 
