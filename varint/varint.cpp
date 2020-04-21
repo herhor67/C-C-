@@ -781,6 +781,23 @@ namespace Meth
 			while (!v.isnull());
 			return u << shift;
 		}
+		UVarInt lcm(UVarInt v)
+		{
+			if (isnull() || v.isnull())
+				return 0;
+			if (operator==(v))
+				return v;
+			return (*this) / gcd(v) * v;
+		}
+		pair<UVarInt, pair<UVarInt, UVarInt>> lcmcoeffs(UVarInt v)
+		{
+			if (isnull() || v.isnull())
+				return { 0, {0, 0} };
+			if (operator==(v))
+				return { v, {1, 1} };
+			UVarInt dgcd = gcd(v);
+			return { *this / dgcd * v, {*this / dgcd, v / dgcd} };
+		}
 
 		// ====={ Print num }=====
 		string hex(string sep = "\n") const
@@ -1074,34 +1091,35 @@ namespace Meth
 		// ====={ Constructors }=====
 		Fraction()
 		{}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value &&  !is_signed<Integral>::value, Integral>::type * = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
 		Fraction(Integral num)
 		{
 			numerator = num;
 		}
-		template<typename Integral, typename enable_if<is_integral<Integral>::value &&   is_signed<Integral>::value, Integral>::type * = nullptr>
+		template<typename Integral, typename enable_if<is_integral<Integral>::value &&  is_signed<Integral>::value, Integral>::type * = nullptr>
 		Fraction(Integral num)
 		{
 			numerator = num;
 		}
 		Fraction(SVarInt num)
 		{
+			bool neg = false;
 			numerator = num;
+			negative = (num.negative != neg); // 2-in XOR
 		}
-		Fraction(SVarInt num, SVarInt den)
+		Fraction(SVarInt num, SVarInt den, bool neg = false)
 		{
 			numerator = num.abs();
 			denominator = den.abs();
-			if (num.negative != den.negative)
-				negative = true;
+			negative = ((num.negative != den.negative) != neg); // 3-in XOR
 			reduce();
 		}
 
 		// ====={ Operational }=====
 		Fraction& reduce()
 		{
-			numerator.reduce();
-			denominator.reduce();
+//			numerator.reduce();
+//			denominator.reduce();
 			UVarInt gcd = numerator.gcd(denominator);
 			numerator /= gcd;
 			denominator /= gcd;
@@ -1173,6 +1191,38 @@ namespace Meth
 
 		// ====={ Math ops }=====
 
+		Fraction& operator+=(const Fraction& rhs)
+		{
+			pair<UVarInt, pair<UVarInt, UVarInt>> lcms = denominator.lcmcoeffs(rhs.denominator);
+			numerator *= lcms.second.second;
+			UVarInt rhsnum = rhs.numerator * lcms.second.first;
+			if (negative == rhs.negative)
+				numerator += rhsnum;
+			else
+			{
+				negative = (numerator >= rhsnum) ? negative : rhs.negative;
+				numerator -= rhsnum;
+			}
+			denominator = lcms.first;
+			reduce();
+			return *this;
+		}
+		Fraction& operator-=(const Fraction& rhs)
+		{
+			pair<UVarInt, pair<UVarInt, UVarInt>> lcms = denominator.lcmcoeffs(rhs.denominator);
+			numerator *= lcms.second.second;
+			UVarInt rhsnum = rhs.numerator * lcms.second.first;
+			if (negative != rhs.negative)
+				numerator += rhsnum;
+			else
+			{
+				negative = (numerator >= rhsnum) ? negative : !rhs.negative;
+				numerator -= rhsnum;
+			}
+			denominator = lcms.first;
+			reduce();
+			return *this;
+		}
 		Fraction& operator*=(const Fraction& rhs)
 		{
 			UVarInt ndgcd = numerator.gcd(rhs.denominator);
@@ -1184,12 +1234,36 @@ namespace Meth
 			negative = (negative != rhs.negative);
 			return *this;
 		}
+		Fraction& operator/=(const Fraction& rhs)
+		{
+			UVarInt ndgcd = numerator.gcd(rhs.numerator);
+			numerator /= ndgcd;
+			denominator *= rhs.numerator / ndgcd;
+			ndgcd = denominator.gcd(rhs.denominator);
+			denominator /= ndgcd;
+			numerator *= rhs.denominator / ndgcd;
+			negative = (negative != rhs.negative);
+			return *this;
+		}
 
-
-
+		friend Fraction operator+(Fraction lhs, const Fraction& rhs)
+		{
+			lhs += rhs;
+			return lhs;
+		}
+		friend Fraction operator-(Fraction lhs, const Fraction& rhs)
+		{
+			lhs -= rhs;
+			return lhs;
+		}
 		friend Fraction operator*(Fraction lhs, const Fraction& rhs)
 		{
 			lhs *= rhs;
+			return lhs;
+		}
+		friend Fraction operator/(Fraction lhs, const Fraction& rhs)
+		{
+			lhs /= rhs;
 			return lhs;
 		}
 
@@ -1202,6 +1276,13 @@ namespace Meth
 		}
 
 		// ====={ Other math }=====
+		Fraction  pow(SVarInt n = 2) const
+		{
+			if (n.negative)
+				throw invalid_argument("Cannot calculate power with negative exponent!");
+			return Fraction(numerator.pow(n), denominator.pow(n), n.getbit(0) ? negative : 0);
+		}
+
 		Fraction abs()
 		{
 			Fraction temp(*this);
@@ -1249,14 +1330,14 @@ int main()
 	SVarInt snd(5);
 	SVarInt den(7);
 
-	Fraction A(12, 7);
-	Fraction B(21, 4);
+	Fraction A(-3, 4);
+	Fraction B(0, 4);
 
 	cout << "A:\n" << A.hex() << endl;// << A.bin() << endl << endl;
 	cout << "B:\n" << B.hex() << endl;// << B.bin() << endl << endl;
 
 
-	Fraction wyn = A * B;
+	Fraction wyn = A.pow(3);
 
 	cout << "W:\n" << wyn.hex() << endl;// << wyn.bin() << endl << endl;
 
