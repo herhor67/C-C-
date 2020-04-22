@@ -1,7 +1,8 @@
 #include <algorithm>
-#include <climits>
+//#include <climits>
 #include <cstdlib>
 #include <iostream>
+//#include <limits>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -1101,6 +1102,32 @@ namespace Meth
 		{
 			numerator = num;
 		}
+		template<typename Floating, typename enable_if<is_floating_point<Floating>::value, Floating>::type * = nullptr>
+		Fraction(Floating num)
+		{
+			if (isnan(num))
+				throw new invalid_argument("Cannot create fraction from NaN!");
+			if (isinf(num))
+				throw new invalid_argument("Cannot create fraction from Inf!");
+			if (num < 0)
+			{
+				negative = true;
+				num = fabs(num);
+			}
+			if (num != 0)
+			{
+				int exp;
+				long double mantissa = frexp(num, &exp);
+				mantissa = ldexp(mantissa, numeric_limits<Floating>::digits);
+				numerator = static_cast<ull>(mantissa);
+				exp -= numeric_limits<Floating>::digits;
+				if (exp > 0)
+					numerator <<= exp;
+				else
+					denominator <<= -exp;
+				reduce();
+			}
+		}
 		Fraction(SVarInt num)
 		{
 			bool neg = false;
@@ -1320,7 +1347,7 @@ int main()
 {
 	auto t1 = chrono::high_resolution_clock::now();
 
-
+	//*
 	string hex = "0123456789ABCDEFFEDCBA9876543210FFF2FDAFF3FFF9FC";
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
@@ -1330,19 +1357,18 @@ int main()
 	SVarInt snd(5);
 	SVarInt den(7);
 
-	Fraction A(-3, 4);
-	Fraction B(0, 4);
+	Fraction A(0.5);
+	Fraction B(-0.25);
 
 	cout << "A:\n" << A.hex() << endl;// << A.bin() << endl << endl;
 	cout << "B:\n" << B.hex() << endl;// << B.bin() << endl << endl;
 
+	Fraction wyn = A + B;
 
-	Fraction wyn = A.pow(3);
-
-	cout << "W:\n" << wyn.hex() << endl;// << wyn.bin() << endl << endl;
-
+	cout << "W:\n" << wyn.hex() << endl << wyn.bin() << endl << endl;
 
 
+	//*/
 
 	auto t2 = chrono::high_resolution_clock::now();
 	auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
