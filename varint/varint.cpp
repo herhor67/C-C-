@@ -1,8 +1,7 @@
-#include <algorithm>
-//#include <climits>
+#include <algorithm> 
 #include <cstdlib>
 #include <iostream>
-//#include <limits>
+#include <limits>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -1294,12 +1293,50 @@ namespace Meth
 			return lhs;
 		}
 
-
 		Fraction  operator-() const
 		{
 			Fraction temp(*this);
 			temp.negative = !negative;
 			return temp;
+		}
+
+		// ====={ Indecr ops }=====
+		Fraction& operator++()
+		{
+			if (negative)
+			{
+				if (denominator > numerator)
+					negative = false;
+				numerator -= denominator;
+			}
+			else // sgn == [0|1]
+				numerator += denominator;
+			return *this;
+		}
+		Fraction& operator--()
+		{
+			if (negative)
+				numerator += denominator;
+			else // sgn == [0|1]
+			{
+				if (denominator > numerator)
+					negative = true;
+				numerator -= denominator;
+			}
+			reduce();
+			return *this;
+		}
+		Fraction  operator++(int)
+		{
+			Fraction tmp(*this);
+			operator++();
+			return tmp;
+		}
+		Fraction  operator--(int)
+		{
+			Fraction tmp(*this);
+			operator--();
+			return tmp;
 		}
 
 		// ====={ Other math }=====
@@ -1363,7 +1400,7 @@ int main()
 	cout << "A:\n" << A.hex() << endl;// << A.bin() << endl << endl;
 	cout << "B:\n" << B.hex() << endl;// << B.bin() << endl << endl;
 
-	Fraction wyn = A + B;
+	Fraction wyn(1+1.0-1.0/powf(2, 10));
 
 	cout << "W:\n" << wyn.hex() << endl << wyn.bin() << endl << endl;
 
