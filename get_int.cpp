@@ -13,9 +13,11 @@ int get_int(int minVal, int maxVal)
 			getline(cin, textInput);
 			if (cin.fail())
 				throw invalid_argument("Failed to read input.");
-			numInput = stoi(textInput);
-			if (to_string(numInput) != textInput)
+			try {
+				numInput = stoi(textInput);
+			} catch (const exception&) {
 				throw invalid_argument("Input is not an integer.");
+			}
 			if (numInput < minVal)
 				throw domain_error("Input is too small.");
 			if (numInput > maxVal)
