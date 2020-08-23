@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 #include <windows.h>
-#include "Functions.h"
 using namespace std;
 
 #define SEL_CHAR ">"
