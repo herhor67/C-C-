@@ -12,9 +12,18 @@
 using namespace std;
 
 typedef unsigned long long ull;
-typedef long long sll;
 constexpr size_t unitbyte = sizeof(ull);
-constexpr size_t unitbits = CHAR_BIT * unitbyte;
+constexpr size_t fracunits = 10;
+
+constexpr size_t unitbits = 8 * unitbyte;
+constexpr size_t fracbits = fracunits * unitbits;
+
+// macros to generate the lookup table (at compile-time)
+#define B2(n) n, n + 1, n + 1, n + 2
+#define B4(n) B2(n), B2(n + 1), B2(n + 1), B2(n + 2)
+#define B6(n) B4(n), B4(n + 1), B4(n + 1), B4(n + 2)
+#define COUNT_BITS B6(0), B6(1), B6(1), B6(2)
+constexpr char BitCountLookup[256] = { COUNT_BITS };
 
 template<typename Integral, typename enable_if<is_integral<Integral>::value, Integral>::type * = nullptr>
 Integral ceildiv(Integral x, Integral y)
@@ -88,6 +97,12 @@ string num2hex(ull num)
 	return temp;
 }
 
+template<typename T>
+void tajp(const T& var)
+{
+	cout << typeid(var).name() << endl;
+}
+
 string oct2bin(string oct)
 {
 	vector<char> chars = str_explode(oct);
@@ -128,6 +143,7 @@ vector<ull> primes(ull limit)
 	}
 	return primes;
 }*/
+
 
 namespace Meth
 {
@@ -250,9 +266,9 @@ namespace Meth
 
 		size_t highestbit() const
 		{
-			size_t r = 0;
 			if (isnull())
 				return -1;
+			size_t r = 0;
 			ull temp = value.back();
 			ull mask = ull(1) << (unitbits - 1);
 			while (!(temp & mask))
@@ -281,6 +297,14 @@ namespace Meth
 				temp >>= 1;
 			}
 			return unitbits * el + r;
+		}
+		size_t  countbits() const
+		{
+			size_t temp = 0;
+			for (size_t i = 0; i < value.size(); ++i)
+				for (ull piece = gvoe(i); piece != 0; piece >>= 8)
+					temp += BitCountLookup[piece & 255];
+			return temp;
 		}
 
 		bool getbit(size_t pos) const
@@ -373,17 +397,15 @@ namespace Meth
 		}
 		UVarInt  operator<< (const UVarInt& rhs) const
 		{
-			if (rhs.isnull())
-				return *this;
-			else
-				return operator<<(rhs.value.at(0));
+			UVarInt temp(*this);
+			temp.operator<<=(rhs);
+			return temp;
 		}
 		UVarInt  operator>> (const UVarInt& rhs) const
 		{
-			if (rhs.isnull())
-				return *this;
-			else
-				return operator>>(rhs.value.at(0));
+			UVarInt temp(*this);
+			temp.operator>>=(rhs);
+			return temp;
 		}
 
 		UVarInt& operator&=(const UVarInt& rhs)
@@ -490,8 +512,7 @@ namespace Meth
 			if (isnull() == 1)
 				value = rhs.value;
 			else if (rhs.isnull() == 1)
-			{
-			}
+			{ }
 			else
 				for (size_t i = 0; i < rhs.value.size(); ++i)
 					increment(rhs.gvoe(i), i);
@@ -529,26 +550,22 @@ namespace Meth
 			{
 				UVarInt multiplicand;
 				UVarInt multiplier;
-				size_t lhshigbit = highestbit();
-				size_t lhslowbit = lowestbit();
-				size_t rhshigbit = rhs.highestbit();
-				size_t rhslowbit = rhs.lowestbit();
-				size_t mpdhigbit, mprhigbit, mprlowbit;
-				if (lhshigbit - lhslowbit >= rhshigbit - rhslowbit)
+				if (countbits() >= rhs.countbits())
 				{
 					multiplicand = *this;
 					multiplier = rhs;
-					mpdhigbit = lhshigbit; mprhigbit = rhshigbit; mprlowbit = rhslowbit;
 				}
 				else
 				{
 					multiplicand = rhs;
 					multiplier = *this;
-					mpdhigbit = rhshigbit; mprhigbit = lhshigbit; mprlowbit = lhslowbit;
 				}
+				size_t mprlowbit = multiplier.lowestbit();
 				multiplier >>= mprlowbit;
 				multiplicand <<= mprlowbit;
-				mpdhigbit += mprlowbit; mprhigbit -= mprlowbit; mprlowbit = 0;
+
+				size_t mprhigbit =   multiplier.highestbit();
+				size_t mpdhigbit = multiplicand.highestbit();
 
 				nullify();
 				value.resize((mprhigbit + mpdhigbit - 1) / unitbits + 1);
@@ -560,7 +577,7 @@ namespace Meth
 					multiplicand <<= 1;
 				}
 				operator+=(multiplicand);
-				//				reduce();
+				//reduce();
 			}
 			return *this;
 		}
@@ -709,8 +726,6 @@ namespace Meth
 		}
 		UVarInt root(UVarInt n = 2) const
 		{
-			auto t1 = chrono::high_resolution_clock::now();
-
 			// Base cases
 			// done in this order, as 0th root of 0 is 0, of 1 is 1 and anything else gives infinity
 			if (operator<=(1))
@@ -724,22 +739,14 @@ namespace Meth
 			UVarInt end = beg << 1;
 
 			if (operator==(beg.pow(n)))
-			{
-				cout << "Beg is gud!" << endl;
 				return beg;
-			}
 			if (operator==(end.pow(n)))
-			{
-				cout << "End is gud!" << endl;
 				return end;
-			}
 
 			UVarInt ans;
 			while (beg <= end)
 			{
 				UVarInt mid = (beg + end) >> 1;
-				cout << "Mid:" << endl << mid.bin() << endl;
-
 				int gtltoe = cmp(mid.pow(n));
 				if (gtltoe == 0)
 					return mid;
@@ -751,9 +758,6 @@ namespace Meth
 				else //if (gtltoe < 0)
 					end = mid - 1;
 			}
-			auto t2 = chrono::high_resolution_clock::now();
-			auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
-			cout << duration / 1000 << "ms" << endl;
 			return ans;
 		}
 		UVarInt log2() const
@@ -869,6 +873,106 @@ namespace Meth
 		}
 
 		// ====={ Bitwise ops }=====
+		SVarInt  operator~() const
+		{
+			SVarInt temp(UVarInt::operator~());
+			temp.negative = !negative;
+			return temp;
+		}
+
+		SVarInt& operator<<=(size_t rhs)
+		{
+			UVarInt::operator<<=(rhs);
+			return *this;
+		}
+		SVarInt& operator>>=(size_t rhs)
+		{
+			UVarInt::operator>>=(rhs);
+			return *this;
+		}
+		SVarInt  operator<< (size_t rhs) const
+		{
+			SVarInt temp(*this);
+			temp.operator<<=(rhs);
+			return temp;
+		}
+		SVarInt  operator>> (size_t rhs) const
+		{
+			SVarInt temp(*this);
+			temp.operator>>=(rhs);
+			return temp;
+		}
+
+		SVarInt& operator<<=(const SVarInt& rhs)
+		{
+			switch (rhs.sign())
+			{
+			case 1:
+				operator<<=(rhs.gvoe(0));
+				break;
+			case -1:
+				operator>>=(rhs.gvoe(0));
+			}
+			return *this;
+		}
+		SVarInt& operator>>=(const SVarInt& rhs)
+		{
+			switch (rhs.sign())
+			{
+			case 1:
+				operator>>=(rhs.gvoe(0));
+				break;
+			case -1:
+				operator<<=(rhs.gvoe(0));
+			}
+			return *this;
+		}
+		SVarInt  operator<< (const SVarInt& rhs) const
+		{
+			SVarInt temp(*this);
+			temp.operator<<=(rhs);
+			return temp;
+		}
+		SVarInt  operator>> (const SVarInt& rhs) const
+		{
+			SVarInt temp(*this);
+			temp.operator>>=(rhs);
+			return temp;
+		}
+
+		SVarInt& operator&=(const SVarInt& rhs)
+		{
+			negative &= rhs.negative;
+			UVarInt::operator&=(rhs);
+			return *this;
+		}
+		SVarInt& operator|=(const SVarInt& rhs)
+		{
+			negative |= rhs.negative;
+			UVarInt::operator|=(rhs);
+			return *this;
+		}
+		SVarInt& operator^=(const SVarInt& rhs)
+		{
+			negative ^= rhs.negative;
+			UVarInt::operator^=(rhs);
+			return *this;
+		}
+		friend SVarInt operator&(SVarInt lhs, const SVarInt& rhs)
+		{
+			lhs &= rhs;
+			return lhs;
+		}
+		friend SVarInt operator|(SVarInt lhs, const SVarInt& rhs)
+		{
+			lhs |= rhs;
+			return lhs;
+		}
+		friend SVarInt operator^(SVarInt lhs, const SVarInt& rhs)
+		{
+			lhs ^= rhs;
+			return lhs;
+		}
 
 		// ====={ Comparison ops }=====
 		bool operator> (const SVarInt& rhs) const
@@ -1062,11 +1166,6 @@ namespace Meth
 			return static_cast<UVarInt>(*this);
 		}
 
-/*		UVarInt gcd(SVarInt rhs)
-		{
-			return UVarInt::gcd(rhs);
-		}*/
-
 		// ====={ Print num }=====
 		string hex(string sep = "\n") const
 		{
@@ -1082,27 +1181,27 @@ namespace Meth
 		}
 	};
 
-	class Fraction
+	class RationFrac
 	{
 	public:
 		UVarInt numerator = 0;
 		UVarInt denominator = 1;
 		bool negative = 0;
 		// ====={ Constructors }=====
-		Fraction()
+		RationFrac()
 		{}
 		template<typename Integral, typename enable_if<is_integral<Integral>::value && !is_signed<Integral>::value, Integral>::type * = nullptr>
-		Fraction(Integral num)
+		RationFrac(Integral num)
 		{
 			numerator = num;
 		}
 		template<typename Integral, typename enable_if<is_integral<Integral>::value &&  is_signed<Integral>::value, Integral>::type * = nullptr>
-		Fraction(Integral num)
+		RationFrac(Integral num)
 		{
 			numerator = num;
 		}
 		template<typename Floating, typename enable_if<is_floating_point<Floating>::value, Floating>::type * = nullptr>
-		Fraction(Floating num)
+		RationFrac(Floating num)
 		{
 			if (isnan(num))
 				throw new invalid_argument("Cannot create fraction from NaN!");
@@ -1127,13 +1226,13 @@ namespace Meth
 				reduce();
 			}
 		}
-		Fraction(SVarInt num)
+		RationFrac(SVarInt num)
 		{
 			bool neg = false;
 			numerator = num;
 			negative = (num.negative != neg); // 2-in XOR
 		}
-		Fraction(SVarInt num, SVarInt den, bool neg = false)
+		RationFrac(SVarInt num, SVarInt den, bool neg = false)
 		{
 			numerator = num.abs();
 			denominator = den.abs();
@@ -1142,7 +1241,7 @@ namespace Meth
 		}
 
 		// ====={ Operational }=====
-		Fraction& reduce()
+		RationFrac& reduce()
 		{
 //			numerator.reduce();
 //			denominator.reduce();
@@ -1151,7 +1250,7 @@ namespace Meth
 			denominator /= gcd;
 			return *this;
 		}
-		Fraction& nullify()
+		RationFrac& nullify()
 		{
 			numerator.nullify();
 			denominator = 1;
@@ -1169,31 +1268,31 @@ namespace Meth
 		}
 
 		// ====={ Comparison ops }=====
-		bool operator> (const Fraction& rhs) const
+		bool operator> (const RationFrac& rhs) const
 		{
 			return cmp(rhs) > 0;
 		}
-		bool operator>=(const Fraction& rhs) const
+		bool operator>=(const RationFrac& rhs) const
 		{
 			return cmp(rhs) >= 0;
 		}
-		bool operator< (const Fraction& rhs) const
+		bool operator< (const RationFrac& rhs) const
 		{
 			return cmp(rhs) < 0;
 		}
-		bool operator<=(const Fraction& rhs) const
+		bool operator<=(const RationFrac& rhs) const
 		{
 			return cmp(rhs) <= 0;
 		}
-		bool operator==(const Fraction& rhs) const
+		bool operator==(const RationFrac& rhs) const
 		{
 			return cmp(rhs) == 0;
 		}
-		bool operator!=(const Fraction& rhs) const
+		bool operator!=(const RationFrac& rhs) const
 		{
 			return cmp(rhs) != 0;
 		}
-		int cmp(const Fraction& rhs) const
+		int cmp(const RationFrac& rhs) const
 		{
 			int lsgn = sign();
 			int rsgn = rhs.sign();
@@ -1217,7 +1316,7 @@ namespace Meth
 
 		// ====={ Math ops }=====
 
-		Fraction& operator+=(const Fraction& rhs)
+		RationFrac& operator+=(const RationFrac& rhs)
 		{
 			pair<UVarInt, pair<UVarInt, UVarInt>> lcms = denominator.lcmcoeffs(rhs.denominator);
 			numerator *= lcms.second.second;
@@ -1233,7 +1332,7 @@ namespace Meth
 			reduce();
 			return *this;
 		}
-		Fraction& operator-=(const Fraction& rhs)
+		RationFrac& operator-=(const RationFrac& rhs)
 		{
 			pair<UVarInt, pair<UVarInt, UVarInt>> lcms = denominator.lcmcoeffs(rhs.denominator);
 			numerator *= lcms.second.second;
@@ -1249,7 +1348,7 @@ namespace Meth
 			reduce();
 			return *this;
 		}
-		Fraction& operator*=(const Fraction& rhs)
+		RationFrac& operator*=(const RationFrac& rhs)
 		{
 			UVarInt ndgcd = numerator.gcd(rhs.denominator);
 			numerator /= ndgcd;
@@ -1260,7 +1359,7 @@ namespace Meth
 			negative = (negative != rhs.negative);
 			return *this;
 		}
-		Fraction& operator/=(const Fraction& rhs)
+		RationFrac& operator/=(const RationFrac& rhs)
 		{
 			UVarInt ndgcd = numerator.gcd(rhs.numerator);
 			numerator /= ndgcd;
@@ -1272,36 +1371,36 @@ namespace Meth
 			return *this;
 		}
 
-		friend Fraction operator+(Fraction lhs, const Fraction& rhs)
+		friend RationFrac operator+(RationFrac lhs, const RationFrac& rhs)
 		{
 			lhs += rhs;
 			return lhs;
 		}
-		friend Fraction operator-(Fraction lhs, const Fraction& rhs)
+		friend RationFrac operator-(RationFrac lhs, const RationFrac& rhs)
 		{
 			lhs -= rhs;
 			return lhs;
 		}
-		friend Fraction operator*(Fraction lhs, const Fraction& rhs)
+		friend RationFrac operator*(RationFrac lhs, const RationFrac& rhs)
 		{
 			lhs *= rhs;
 			return lhs;
 		}
-		friend Fraction operator/(Fraction lhs, const Fraction& rhs)
+		friend RationFrac operator/(RationFrac lhs, const RationFrac& rhs)
 		{
 			lhs /= rhs;
 			return lhs;
 		}
 
-		Fraction  operator-() const
+		RationFrac  operator-() const
 		{
-			Fraction temp(*this);
+			RationFrac temp(*this);
 			temp.negative = !negative;
 			return temp;
 		}
 
 		// ====={ Indecr ops }=====
-		Fraction& operator++()
+		RationFrac& operator++()
 		{
 			if (negative)
 			{
@@ -1313,7 +1412,7 @@ namespace Meth
 				numerator += denominator;
 			return *this;
 		}
-		Fraction& operator--()
+		RationFrac& operator--()
 		{
 			if (negative)
 				numerator += denominator;
@@ -1326,38 +1425,38 @@ namespace Meth
 			reduce();
 			return *this;
 		}
-		Fraction  operator++(int)
+		RationFrac  operator++(int)
 		{
-			Fraction tmp(*this);
+			RationFrac tmp(*this);
 			operator++();
 			return tmp;
 		}
-		Fraction  operator--(int)
+		RationFrac  operator--(int)
 		{
-			Fraction tmp(*this);
+			RationFrac tmp(*this);
 			operator--();
 			return tmp;
 		}
 
 		// ====={ Other math }=====
-		Fraction  pow(SVarInt n = 2) const
+		RationFrac  pow(SVarInt n = 2) const
 		{
 			if (n.negative)
 				throw invalid_argument("Cannot calculate power with negative exponent!");
-			return Fraction(numerator.pow(n), denominator.pow(n), n.getbit(0) ? negative : 0);
+			return RationFrac(numerator.pow(n), denominator.pow(n), n.getbit(0) ? negative : 0);
 		}
 
-		Fraction abs()
+		RationFrac abs()
 		{
-			Fraction temp(*this);
+			RationFrac temp(*this);
 			temp.negative = false;
 			return temp;
 		}
-		Fraction inv()
+		RationFrac inv()
 		{
 			if (isnull())
 				throw new logic_error("Cannot inverse the Zero!");
-			Fraction temp(denominator, numerator);
+			RationFrac temp(denominator, numerator);
 			temp.negative = negative;
 			return temp;
 		}
@@ -1376,9 +1475,260 @@ namespace Meth
 			return string(negative ? "-" : "+") + numerator.bin(sep) + "----------------------------------------------------------------" + sep + denominator.bin(sep);
 		}
 	};
+
+	class FixedPFrac : public SVarInt
+	{
+	public:
+		// ====={ Constructors }=====
+		FixedPFrac() {}
+/*		FixedPFrac(UVarInt num) : SVarInt(num)
+		{
+			operator<<=(fracbits);
+		} */
+		FixedPFrac(SVarInt num) : SVarInt(num)
+		{
+			operator<<=(fracbits);
+		}
+
+		// ====={ Bitwise ops }=====
+		FixedPFrac  operator~() const
+		{
+			FixedPFrac temp(UVarInt::operator~());
+			return temp;
+		}
+
+		FixedPFrac& operator<<=(size_t rhs)
+		{
+			SVarInt::operator<<=(rhs);
+			return *this;
+		}
+		FixedPFrac& operator>>=(size_t rhs)
+		{
+			SVarInt::operator>>=(rhs);
+			return *this;
+		}
+		FixedPFrac  operator<< (size_t rhs) const
+		{
+			FixedPFrac temp(*this);
+			temp.operator<<=(rhs);
+			return temp;
+		}
+		FixedPFrac  operator>> (size_t rhs) const
+		{
+			FixedPFrac temp(*this);
+			temp.operator>>=(rhs);
+			return temp;
+		}
+
+		FixedPFrac& operator<<=(const SVarInt& rhs)
+		{
+			switch (rhs.sign())
+			{
+			case 1:
+				operator<<=(rhs.gvoe(0));
+				break;
+			case -1:
+				operator>>=(rhs.gvoe(0));
+			}
+			return *this;
+		}
+		FixedPFrac& operator>>=(const SVarInt& rhs)
+		{
+			switch (rhs.sign())
+			{
+			case 1:
+				operator>>=(rhs.gvoe(0));
+				break;
+			case -1:
+				operator<<=(rhs.gvoe(0));
+			}
+			return *this;
+		}
+		FixedPFrac  operator<< (const SVarInt& rhs) const
+		{
+			FixedPFrac temp(*this);
+			temp.operator<<=(rhs);
+			return temp;
+		}
+		FixedPFrac  operator>> (const SVarInt& rhs) const
+		{
+			FixedPFrac temp(*this);
+			temp.operator>>=(rhs);
+			return temp;
+		}
+
+		FixedPFrac& operator&=(const FixedPFrac& rhs)
+		{
+			SVarInt::operator&=(rhs);
+			return *this;
+		}
+		FixedPFrac& operator|=(const FixedPFrac& rhs)
+		{
+			SVarInt::operator|=(rhs);
+			return *this;
+		}
+		FixedPFrac& operator^=(const FixedPFrac& rhs)
+		{
+			SVarInt::operator^=(rhs);
+			return *this;
+		}
+
+		friend FixedPFrac operator&(FixedPFrac lhs, const FixedPFrac& rhs)
+		{
+			lhs &= rhs;
+			return lhs;
+		}
+		friend FixedPFrac operator|(FixedPFrac lhs, const FixedPFrac& rhs)
+		{
+			lhs |= rhs;
+			return lhs;
+		}
+		friend FixedPFrac operator^(FixedPFrac lhs, const FixedPFrac& rhs)
+		{
+			lhs ^= rhs;
+			return lhs;
+		}
+
+		// ====={ Math ops }=====
+		FixedPFrac& operator+=(const FixedPFrac& rhs)
+		{
+			SVarInt::operator+=(rhs);
+			return *this;
+		}
+		FixedPFrac& operator-=(const FixedPFrac& rhs)
+		{
+			SVarInt::operator-=(rhs);
+			return *this;
+		}
+		FixedPFrac& operator*=(const FixedPFrac& rhs)
+		{
+			SVarInt::operator*=(rhs);
+			operator>>=(fracbits);
+			return *this;
+		}
+		FixedPFrac& operator/=(const FixedPFrac& rhs)
+		{
+			operator<<=(fracbits);
+			SVarInt::operator/=(rhs);
+			return *this;
+		}
+		FixedPFrac& operator%=(const FixedPFrac& rhs)
+		{
+			operator<<=(fracbits);
+			SVarInt::operator%=(rhs);
+			return *this;
+		}
+
+		friend FixedPFrac operator+(FixedPFrac lhs, const FixedPFrac& rhs)
+		{
+			lhs += rhs;
+			return lhs;
+		}
+		friend FixedPFrac operator-(FixedPFrac lhs, const FixedPFrac& rhs)
+		{
+			lhs -= rhs;
+			return lhs;
+		}
+		friend FixedPFrac operator*(FixedPFrac lhs, const FixedPFrac& rhs)
+		{
+			lhs *= rhs;
+			return lhs;
+		}
+		friend FixedPFrac operator/(FixedPFrac lhs, const FixedPFrac& rhs)
+		{
+			lhs /= rhs;
+			return lhs;
+		}
+		friend FixedPFrac operator%(FixedPFrac lhs, const FixedPFrac& rhs)
+		{
+			lhs %= rhs;
+			return lhs;
+		}
+
+		pair<FixedPFrac, FixedPFrac> divrem(const FixedPFrac& rhs)
+		{
+			FixedPFrac temp(*this);
+			temp  <<= fracbits;
+			return temp.SVarInt::divrem(rhs);
+		}
+
+		// ====={ Indecr ops }=====
+		FixedPFrac& operator++()
+		{
+			FixedPFrac one(1);
+			operator+=(one);
+			return *this;
+		}
+		FixedPFrac& operator--()
+		{
+			FixedPFrac one(1);
+			operator-=(one);
+			return *this;
+		}
+		FixedPFrac  operator++(int)
+		{
+			FixedPFrac tmp(*this);
+			operator++();
+			return tmp;
+		}
+		FixedPFrac  operator--(int)
+		{
+			FixedPFrac tmp(*this);
+			operator--();
+			return tmp;
+		}
+
+		// ====={ Other math }=====
+		FixedPFrac  pow(SVarInt n = 2) const
+		{
+			FixedPFrac temp(SVarInt::pow(n));
+			temp >>= (n * fracbits);
+			return temp;
+		}
+		FixedPFrac root(SVarInt n = 2) const
+		{
+			FixedPFrac temp(operator<<((n-1) * fracbits));
+			tajp(temp);
+			cout << "Shifted: " << temp.hex() << endl;
+			tajp(temp.SVarInt::root(n));
+			FixedPFrac temp2 = temp.SVarInt::root(n);
+			return temp2 >> fracbits;
+		}
+/*		FixedPFrac log2() const
+		{
+			if (negative)
+				throw invalid_argument("Cannot calculate logarithm of negative number!");
+			return UVarInt::log2();
+		}//*/
+
+		FixedPFrac abs()
+		{
+			FixedPFrac temp(*this);
+			temp.negative = false;
+			return temp;
+		}
+
+		// ====={ Print num }=====
+		string hex(string sep = "\n") const
+		{
+			return string(negative ? "-" : "+") + UVarInt::hex(sep);
+		}
+		string dec(string sep = "\n") const
+		{
+			return string(negative ? "-" : "+") + UVarInt::dec(sep);
+		}
+		string bin(string sep = "\n") const
+		{
+			return string(negative ? "-" : "+") + UVarInt::bin(sep);
+		}
+
+	};
 }
 
+
 using namespace Meth;
+
+
 
 int main()
 {
@@ -1389,28 +1739,29 @@ int main()
 	string oct = "22150531704653633677766713523035452062041777777777777777777777";
 	string bin = "0111010101011101010";
 
-	//UVarInt num(hex, 16);
-	SVarInt num(3);
-	SVarInt snd(5);
-	SVarInt den(7);
+	UVarInt A(hex, 16);
+	//UVarInt A(635373);
+	UVarInt B(2819);
 
-	Fraction A(0.5);
-	Fraction B(-0.25);
 
 	cout << "A:\n" << A.hex() << endl;// << A.bin() << endl << endl;
 	cout << "B:\n" << B.hex() << endl;// << B.bin() << endl << endl;
 
-	Fraction wyn(1+1.0-1.0/powf(2, 10));
+	UVarInt wyn = A * B;
+
+	tajp(wyn);
 
 	cout << "W:\n" << wyn.hex() << endl << wyn.bin() << endl << endl;
 
 
-	//*/
+	//*/6AC244C7
 
 	auto t2 = chrono::high_resolution_clock::now();
 	auto duration = chrono::duration_cast<chrono::microseconds>(t2 - t1).count();
 	cout << endl << duration << "us" << endl;
 
+
+	system("pause");
 }
 
 
