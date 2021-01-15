@@ -42,7 +42,7 @@ class Selector
 			return crdP(0, 0);
 		return crdP(csbi.dwCursorPosition.Y, csbi.dwCursorPosition.X);
 	}
-	void drawArrows(const crdP& pos) const
+	void selectorDraw(const crdP& pos) const
 	{
 		auto end = whereCursor();
 		for (int r = pos.first; r <= pos.second; r++)
@@ -52,7 +52,7 @@ class Selector
 		}
 		cursorToYX(end);
 	}
-	void deleteArrows(const crdP& pos) const
+	void deselectorDraw(const crdP& pos) const
 	{
 		auto end = whereCursor();
 		for (int r = pos.first; r <= pos.second; r++)
@@ -101,7 +101,7 @@ public:
 		if (!lnbr)
 			std::cout << std::endl;
 
-		drawArrows(rows.at(select));
+		selectorDraw(rows.at(select));
 
 		while (true)
 		{
@@ -113,21 +113,21 @@ public:
 				{
 				case 72: // arrow up
 				case 75: // arrow left
-					deleteArrows(rows[select]);
+					deselectorDraw(rows[select]);
 					if (select <= 0)
 						select = size - 1;
 					else
 						--select;
-					drawArrows(rows[select]);
+					selectorDraw(rows[select]);
 					break;
 				case 77: // arrow left
 				case 80: // arrow down
-					deleteArrows(rows[select]);
+					deselectorDraw(rows[select]);
 					if (select >= size - 1)
 						select = 0;
 					else
 						++select;
-					drawArrows(rows[select]);
+					selectorDraw(rows[select]);
 					break;
 				default:
 					break;
