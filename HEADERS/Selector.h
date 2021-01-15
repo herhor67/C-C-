@@ -8,11 +8,11 @@
 #include <vector>
 #include <windows.h>
 
-#ifndef SEL_CHAR
-#define SEL_CHAR "> "
+#ifndef SEL_STR
+#define SEL_STR "> "
 #endif
-#ifndef EMP_CHAR
-#define EMP_CHAR "  "
+#ifndef EMP_STR
+#define EMP_STR "  "
 #endif
 
 template <typename keyT>
@@ -48,7 +48,7 @@ class Selector
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
-			std::cout << SEL_CHAR;
+			std::cout << SEL_STR;
 		}
 		cursorToYX(end);
 	}
@@ -58,7 +58,7 @@ class Selector
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
-			std::cout << EMP_CHAR;
+			std::cout << EMP_STR;
 		}
 		cursorToYX(end);
 	}
@@ -89,12 +89,11 @@ public:
 			do
 			{
 				to = option.second.find('\n', from);
-				std::cout << EMP_CHAR << option.second.substr(from, to - from) << std::endl;
-				from = to+1;
-			}
-			while (to != std::string::npos);
+				std::cout << EMP_STR << option.second.substr(from, to - from) << std::endl;
+				from = to + 1;
+			} while (to != std::string::npos);
 
-			rows.push_back(crdP(start, whereCursor().first-1));
+			rows.push_back(crdP(start, whereCursor().first - 1));
 
 			if (lnbr)
 				std::cout << std::endl;
