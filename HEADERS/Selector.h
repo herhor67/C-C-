@@ -8,8 +8,6 @@
 #include <vector>
 #include <windows.h>
 
-using namespace std;
-
 #ifndef SEL_CHAR
 #define SEL_CHAR "> "
 #endif
@@ -17,14 +15,13 @@ using namespace std;
 #define EMP_CHAR "  "
 #endif
 
-
 template <typename keyT>
 class Selector
 {
 	typedef short crdT;
-	typedef pair<crdT, crdT> crdP;
+	typedef std::pair<crdT, crdT> crdP;
 
-	vector<pair<keyT, string>> options;
+	std::vector<std::pair<keyT, std::string>> options;
 	bool lnbr;
 
 	void cursorToYX(crdT Y, crdT X) const
@@ -32,13 +29,13 @@ class Selector
 		COORD coord = { X, Y };
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 		if (!SetConsoleCursorPosition(hConsole, coord))
-			throw runtime_error("Could not move the cursor.");
+			throw std::runtime_error("Could not move the cursor.");
 	}
 	void cursorToYX(const crdP& coords) const
 	{
 		cursorToYX(coords.first, coords.second);
 	}
-	crdP whereCursorAt() const
+	crdP whereCursor() const
 	{
 		CONSOLE_SCREEN_BUFFER_INFO csbi;
 		if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
@@ -47,21 +44,21 @@ class Selector
 	}
 	void drawArrows(const crdP& pos) const
 	{
-		auto end = whereCursorAt();
+		auto end = whereCursor();
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
-			cout << SEL_CHAR;
+			std::cout << SEL_CHAR;
 		}
 		cursorToYX(end);
 	}
 	void deleteArrows(const crdP& pos) const
 	{
-		auto end = whereCursorAt();
+		auto end = whereCursor();
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
-			cout << EMP_CHAR;
+			std::cout << EMP_CHAR;
 		}
 		cursorToYX(end);
 	}
@@ -73,37 +70,37 @@ public:
 	~Selector()
 	{
 	}
-	void addOption(const keyT& key, const string& val)
+	void addOption(const keyT& key, const std::string& val)
 	{
-		options.push_back(pair<keyT, string>(key, val));
+		options.push_back(std::pair<keyT, std::string>(key, val));
 	}
 	keyT selectOption(size_t select = -1) const
 	{
-		vector<crdP> rows;
+		std::vector<crdP> rows;
 		size_t size = options.size();
 		if (select < 0 || select >= size)
 			select = size - 1;
-		for (const pair<keyT, string>& option : options)
+		for (const std::pair<keyT, std::string>& option : options)
 		{
-			crdT start = whereCursorAt().first;
+			crdT start = whereCursor().first;
 
 			size_t from = 0;
 			size_t to = 0;
 			do
 			{
 				to = option.second.find('\n', from);
-				cout << EMP_CHAR << option.second.substr(from, to - from) << endl;
+				std::cout << EMP_CHAR << option.second.substr(from, to - from) << std::endl;
 				from = to+1;
 			}
 			while (to != std::string::npos);
 
-			rows.push_back(crdP(start, whereCursorAt().first-1));
+			rows.push_back(crdP(start, whereCursor().first-1));
 
 			if (lnbr)
-				cout << endl;
+				std::cout << std::endl;
 		}
 		if (!lnbr)
-			cout << endl;
+			std::cout << std::endl;
 
 		drawArrows(rows.at(select));
 
