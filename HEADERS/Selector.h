@@ -3,51 +3,51 @@
 #define Selector_H
 
 #include <conio.h>
-#include <map>
-#include <memory>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <windows.h>
+
 using namespace std;
 
-#define SEL_CHAR ">"
-#define EMP_CHAR " "
+#ifndef SEL_CHAR
+#define SEL_CHAR "> "
+#endif
+#ifndef EMP_CHAR
+#define EMP_CHAR "  "
+#endif
 
 
 template <typename keyT>
 class Selector
 {
+	typedef short crdT;
+	typedef pair<crdT, crdT> crdP;
+
 	vector<pair<keyT, string>> options;
 	bool lnbr;
-	void cursorToYX(const int& Y, const int& X) const
+
+	void cursorToYX(crdT Y, crdT X) const
 	{
-		COORD coord;
-		coord.Y = Y;
-		coord.X = X;
+		COORD coord = { X, Y };
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 		if (!SetConsoleCursorPosition(hConsole, coord))
 			throw runtime_error("Could not move the cursor.");
 	}
-	void cursorToYX(const pair<int, int>& coords) const
+	void cursorToYX(const crdP& coords) const
 	{
-		COORD coord;
-		coord.Y = coords.first;
-		coord.X = coords.second;
-		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		if (!SetConsoleCursorPosition(hConsole, coord))
-			throw runtime_error("Could not move the cursor.");
+		cursorToYX(coords.first, coords.second);
 	}
-	pair<int, int> whereCursorAt() const
+	crdP whereCursorAt() const
 	{
 		CONSOLE_SCREEN_BUFFER_INFO csbi;
 		if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
-			return pair<int, int>(0, 0);
-		return pair<int, int>(csbi.dwCursorPosition.Y, csbi.dwCursorPosition.X);
+			return crdP(0, 0);
+		return crdP(csbi.dwCursorPosition.Y, csbi.dwCursorPosition.X);
 	}
-	void drawArrows(const pair<int, int>& pos) const
+	void drawArrows(const crdP& pos) const
 	{
-		pair<int, int> end = whereCursorAt();
+		auto end = whereCursorAt();
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
@@ -55,9 +55,9 @@ class Selector
 		}
 		cursorToYX(end);
 	}
-	void deleteArrows(const pair<int, int>& pos) const
+	void deleteArrows(const crdP& pos) const
 	{
-		pair<int, int> end = whereCursorAt();
+		auto end = whereCursorAt();
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
@@ -65,11 +65,9 @@ class Selector
 		}
 		cursorToYX(end);
 	}
+
 public:
-	Selector() : lnbr(true)
-	{
-	}
-	Selector(bool b) : lnbr(b)
+	Selector(bool b = true) : lnbr(b)
 	{
 	}
 	~Selector()
@@ -81,27 +79,37 @@ public:
 	}
 	keyT selectOption(size_t select = -1) const
 	{
-		vector<pair<int, int>> rows;
+		vector<crdP> rows;
 		size_t size = options.size();
 		if (select < 0 || select >= size)
 			select = size - 1;
 		for (const pair<keyT, string>& option : options)
 		{
-			int start = whereCursorAt().first;
-			cout << EMP_CHAR << " " << str_replace(option.second, "\n", string("\n") + EMP_CHAR + " ");
-			rows.push_back(pair<int, int>(start, whereCursorAt().first));
-			cout << endl;
+			crdT start = whereCursorAt().first;
+
+			size_t from = 0;
+			size_t to = 0;
+			do
+			{
+				to = option.second.find('\n', from);
+				cout << EMP_CHAR << option.second.substr(from, to - from) << endl;
+				from = to+1;
+			}
+			while (to != std::string::npos);
+
+			rows.push_back(crdP(start, whereCursorAt().first-1));
+
 			if (lnbr)
 				cout << endl;
 		}
-		cout << endl;
+		if (!lnbr)
+			cout << endl;
+
 		drawArrows(rows.at(select));
 
-		int ch;
 		while (true)
 		{
-			ch = _getch();
-			switch (ch)
+			switch (_getch())
 			{
 			case 0:
 			case 224:
@@ -113,7 +121,7 @@ public:
 					if (select <= 0)
 						select = size - 1;
 					else
-						select--;
+						--select;
 					drawArrows(rows[select]);
 					break;
 				case 77: // arrow left
@@ -122,7 +130,7 @@ public:
 					if (select >= size - 1)
 						select = 0;
 					else
-						select++;
+						++select;
 					drawArrows(rows[select]);
 					break;
 				default:
@@ -136,8 +144,7 @@ public:
 			case 8:  // backspace
 			case 24: // cancel
 			case 27: // escape
-				keyT empty = keyT();
-				return empty;
+				return keyT();
 				break;
 			}
 		}
