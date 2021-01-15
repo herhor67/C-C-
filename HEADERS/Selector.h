@@ -44,7 +44,7 @@ class Selector
 	}
 	void selectorDraw(const crdP& pos) const
 	{
-		auto end = whereCursor();
+		crdP end = whereCursor();
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
@@ -54,7 +54,7 @@ class Selector
 	}
 	void deselectorDraw(const crdP& pos) const
 	{
-		auto end = whereCursor();
+		crdP end = whereCursor();
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
