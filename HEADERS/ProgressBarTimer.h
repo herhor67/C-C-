@@ -56,6 +56,8 @@ public:
 		detailsPos = whereCursor();
 		++detailsPos.second;
 		std::cout << " 0/" << maxValue << "\tEta: I";
+		if (!reuse)
+			std::cout << std::endl;
 	}
 	~ProgressBar()
 	{
@@ -115,15 +117,20 @@ public:
 			auto sc = s.count();
 
 			std::stringstream ss;
-			ss.fill('0');
-			if (dc)
-				ss << std::setw(2) << d.count() << 'd ';
-			if (dc || hc)
-				ss << std::setw(2) << h.count() << 'h ';
-			if (dc || hc || mc)
-				ss << std::setw(2) << m.count() << 'm ';
-			//			if (dc || hc || mc || sc)
-			ss << std::setw(2) << s.count() << 's ';
+			if (!dc && !hc && !mc && !sc)
+				ss << "Done";
+			else
+			{
+				ss.fill('0');
+				if (dc)
+					ss << std::setw(2) << d.count() << "d ";
+				if (dc || hc)
+					ss << std::setw(2) << h.count() << "h ";
+				if (!dc && (hc || mc))
+					ss << std::setw(2) << m.count() << "m ";
+				if (!dc && !hc && (mc || sc))
+					ss << std::setw(2) << s.count() << "s ";
+			}
 
 			std::cout << "\tEta: " << ss.rdbuf() << "                                ";
 		}
