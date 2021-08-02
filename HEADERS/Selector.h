@@ -44,23 +44,23 @@ class Selector
 	}
 	void selectorDraw(const crdP& pos) const
 	{
-		crdP end = whereCursor();
+//		auto end = whereCursor();
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
 			std::cout << SEL_STR;
 		}
-		cursorToYX(end);
+//		cursorToYX(end);
 	}
 	void deselectorDraw(const crdP& pos) const
 	{
-		crdP end = whereCursor();
+//		auto end = whereCursor();
 		for (int r = pos.first; r <= pos.second; r++)
 		{
 			cursorToYX(r, 0);
 			std::cout << EMP_STR;
 		}
-		cursorToYX(end);
+//		cursorToYX(end);
 	}
 
 public:
@@ -101,7 +101,9 @@ public:
 		if (!lnbr)
 			std::cout << std::endl;
 
-		selectorDraw(rows.at(select));
+		crdP lastPos = whereCursor();
+
+		selectorDraw(rows[select]);
 
 		while (true)
 		{
@@ -135,11 +137,13 @@ public:
 				break;
 			case 13: // carriage return
 			case 32: // space
+				cursorToYX(lastPos);
 				return options[select].first;
 				break;
 			case 8:  // backspace
 			case 24: // cancel
 			case 27: // escape
+				cursorToYX(lastPos);
 				return keyT();
 				break;
 			}
