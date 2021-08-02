@@ -8,12 +8,8 @@
 #include <vector>
 #include <windows.h>
 
-#ifndef SEL_STR
 #define SEL_STR "> "
-#endif
-#ifndef EMP_STR
 #define EMP_STR "  "
-#endif
 
 template <typename keyT>
 class Selector
