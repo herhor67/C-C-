@@ -1,3 +1,7 @@
+#include <type_traits>
+#include <array>
+//#include <bit>
+
 
 template <typename Integer, std::enable_if_t<std::is_integral<Integer>::value, bool> = true>
 constexpr auto integer_to_varint(Integer input)
