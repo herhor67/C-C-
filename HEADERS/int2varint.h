@@ -30,3 +30,15 @@ constexpr auto integer_to_varint(Integer input)
 	}
 	return result;
 }
+
+
+
+
+
+
+
+auto result = integer_to_varint(i);
+
+for (; result.index < result.bytes.size() ; ++result.index)
+	cout << result.bytes[result.index] << ' ';
+cout << '\t' << result.index << endl;
